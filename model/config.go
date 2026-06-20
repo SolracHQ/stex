@@ -1,0 +1,84 @@
+package model
+
+// SortBy describes which field to sort directory contents by.
+type SortBy int
+
+const (
+	SortByName SortBy = iota
+	SortBySize
+)
+
+// SortOrder controls ascending or descending sort.
+type SortOrder int
+
+const (
+	Ascending  SortOrder = iota
+	Descending
+)
+
+// Grouping controls how files and directories are interleaved in the listing.
+type Grouping int
+
+const (
+	FilesFirst Grouping = iota
+	DirsFirst
+	FilesOnly
+	DirsOnly
+	Mixed
+)
+
+// Config holds the current sort and filter settings.
+type Config struct {
+	SortBy    SortBy
+	SortOrder SortOrder
+	Grouping  Grouping
+}
+
+// DefaultConfig returns size-descending sort with mixed grouping.
+func DefaultConfig() Config {
+	return Config{
+		SortBy:    SortBySize,
+		SortOrder: Descending,
+		Grouping:  Mixed,
+	}
+}
+
+// GroupingString returns a short label for a Grouping value.
+func GroupingString(g Grouping) string {
+	switch g {
+	case FilesFirst:
+		return "files first"
+	case DirsFirst:
+		return "dirs first"
+	case FilesOnly:
+		return "files only"
+	case DirsOnly:
+		return "dirs only"
+	case Mixed:
+		return "mixed"
+	}
+	return ""
+}
+
+// Toggle cycles SortBy between SortByName and SortBySize.
+func (s *SortBy) Toggle() {
+	if *s == SortByName {
+		*s = SortBySize
+	} else {
+		*s = SortByName
+	}
+}
+
+// Toggle cycles SortOrder between Ascending and Descending.
+func (s *SortOrder) Toggle() {
+	if *s == Ascending {
+		*s = Descending
+	} else {
+		*s = Ascending
+	}
+}
+
+// Toggle cycles Grouping through all five modes in order.
+func (g *Grouping) Toggle() {
+	*g = (*g + 1) % 5
+}
