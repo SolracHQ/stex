@@ -1,6 +1,6 @@
 # stex
 
-Interactive `du` alternative. TUI file tree browser with live scan progress, sorting, grouping, and keyboard-driven navigation.
+Interactive TUI to explore where disk space is being used. Scan any directory, sort by size, follow the color gradient (red = biggest) to find what's consuming storage. Live scan progress and grouping. Rich keyboard navigation for SSH sessions, mouse support for local usage.
 
 ## Install
 
@@ -27,15 +27,16 @@ Defaults to the current directory when no path is given.
 ### Keys
 
 | Key | Action |
-|---|---|
+|---|---|---|
 | `↑`/`k` | move up |
 | `↓`/`j` | move down |
-| `enter` | open directory |
-| `esc`/`bksp` | go to parent |
+| `enter`/`l`/`right` | open directory |
+| `esc`/`h`/`left` | go to parent |
 | `s` | toggle sort (name/size) |
 | `o` | toggle order (asc/desc) |
 | `g` | toggle grouping |
-| `?`/`h` | toggle help overlay |
+| `i` | toggle emoji icons |
+| `?` | toggle help overlay |
 | `q`/`ctrl+c` | quit |
 
 ## Build
