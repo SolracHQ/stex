@@ -12,6 +12,7 @@ type keyMap struct {
 	Sort  key.Binding
 	Group key.Binding
 	Order key.Binding
+	Icons key.Binding
 	Help  key.Binding
 	Quit  key.Binding
 }
@@ -26,7 +27,7 @@ func (k keyMap) ShortHelp() []key.Binding {
 func (k keyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
 		{k.Up, k.Down, k.Enter, k.Back},
-		{k.Sort, k.Group, k.Order},
+		{k.Sort, k.Group, k.Order, k.Icons},
 		{k.Help, k.Quit},
 	}
 }
@@ -42,12 +43,12 @@ var appKeys = keyMap{
 		key.WithHelp("down/j", "move down"),
 	),
 	Enter: key.NewBinding(
-		key.WithKeys("enter"),
-		key.WithHelp("enter", "open directory"),
+		key.WithKeys("enter", "l", "right"),
+		key.WithHelp("enter/l", "open directory"),
 	),
 	Back: key.NewBinding(
-		key.WithKeys("esc", "backspace"),
-		key.WithHelp("esc/bksp", "go up"),
+		key.WithKeys("esc", "backspace", "h", "left"),
+		key.WithHelp("esc/h", "go up"),
 	),
 	Sort: key.NewBinding(
 		key.WithKeys("s"),
@@ -61,9 +62,13 @@ var appKeys = keyMap{
 		key.WithKeys("o"),
 		key.WithHelp("o", "ascending/descending"),
 	),
+	Icons: key.NewBinding(
+		key.WithKeys("i"),
+		key.WithHelp("i", "toggle icons"),
+	),
 	Help: key.NewBinding(
-		key.WithKeys("?", "h"),
-		key.WithHelp("?/h", "toggle help"),
+		key.WithKeys("?"),
+		key.WithHelp("?", "help"),
 	),
 	Quit: key.NewBinding(
 		key.WithKeys("q", "ctrl+c"),

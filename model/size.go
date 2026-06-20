@@ -21,10 +21,10 @@ func (s Size) String() string {
 	return fmt.Sprintf("%.2f %s", value, units[index])
 }
 
-// PercentOf returns s as a percentage of total (e.g. "12.34").
-func (s Size) PercentOf(total Size) string {
+// PercentOf returns s as a percentage of total (e.g. 12.34).
+func (s Size) PercentOf(total Size) float64 {
 	if total == 0 {
-		return "0.00"
+		return 0
 	}
-	return fmt.Sprintf("%.2f", float64(s)/float64(total)*100)
+	return float64(s) / float64(total) * 100
 }

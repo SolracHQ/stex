@@ -27,11 +27,20 @@ const (
 	Mixed
 )
 
-// Config holds the current sort and filter settings.
+// IconStyle controls how file and directory counts are labelled.
+type IconStyle int
+
+const (
+	IconLetters IconStyle = iota
+	IconEmoji
+)
+
+// Config holds the current sort, filter, and display settings.
 type Config struct {
 	SortBy    SortBy
 	SortOrder SortOrder
 	Grouping  Grouping
+	IconStyle IconStyle
 }
 
 // DefaultConfig returns size-descending sort with mixed grouping.
@@ -40,6 +49,7 @@ func DefaultConfig() Config {
 		SortBy:    SortBySize,
 		SortOrder: Descending,
 		Grouping:  Mixed,
+		IconStyle: IconLetters,
 	}
 }
 
@@ -81,4 +91,9 @@ func (s *SortOrder) Toggle() {
 // Toggle cycles Grouping through all five modes in order.
 func (g *Grouping) Toggle() {
 	*g = (*g + 1) % 5
+}
+
+// Toggle cycles IconStyle between IconLetters and IconEmoji.
+func (is *IconStyle) Toggle() {
+	*is = (*is + 1) % 2
 }
