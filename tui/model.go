@@ -12,14 +12,19 @@ import (
 	"charm.land/bubbles/v2/help"
 	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/table"
+	"charm.land/lipgloss/v2"
 	tea "charm.land/bubbletea/v2"
 )
 
-type screen int
-
 const (
-	screenMain screen = iota
-	screenHelp
+	splitViewThreshold = 80
+	scanTickInterval   = 80 * time.Millisecond
+	scrollLines        = 3
+	loadingMargin      = 6
+	minDialogHeight    = 10
+	maxChildren        = 10
+	infoPanelWidth     = 80
+	infoPanelHeight    = 10
 )
 
 type scanTickMsg struct{}
@@ -33,7 +38,6 @@ type model struct {
 	items   []stexmodel.TreeItem
 
 	ready  bool
-	screen screen
 
 	scanState *stexmodel.ScanState
 
@@ -41,7 +45,10 @@ type model struct {
 	height int
 	keys   keyMap
 	help   help.Model
-	tableView    table.Model
+	tableView table.Model
+
+	infoPath    string
+	infoContent string
 }
 
 // New creates and returns a new Bubble Tea model for the given directory path.
@@ -84,15 +91,14 @@ func (m *model) Init() tea.Cmd {
 	return m.scanTick()
 }
 
-// scanTick returns a tea.Cmd that fires scanTickMsg after 80ms.
+// scanTick returns a command that polls the async scan state.
 func (m *model) scanTick() tea.Cmd {
-	return tea.Tick(80*time.Millisecond, func(t time.Time) tea.Msg {
+	return tea.Tick(scanTickInterval, func(_ time.Time) tea.Msg {
 		return scanTickMsg{}
 	})
 }
 
-// rebuildRows refreshes the table columns (with sort indicators) and rows
-// from the current items slice.
+// rebuildRows refreshes the table columns and rows from the current items.
 func (m *model) rebuildRows() {
 	cols := m.tableView.Columns()
 	nameWidth := 40
@@ -132,43 +138,31 @@ func (m *model) rebuildRows() {
 }
 
 // itemToRow converts a TreeItem into a table row with a gradient-coloured
-// percentage cell (green→yellow→red based on disk usage). The gradient ANSI
-// closes with \033[39m so it only resets foreground, not the selection
-// background. In emoji mode, files and directories get a prefix emoji.
+// percentage cell based on disk usage.
 func itemToRow(item stexmodel.TreeItem, iconStyle stexmodel.IconStyle) table.Row {
 	switch item.Kind {
-	case stexmodel.TKFile:
-		percent := item.File.Size.PercentOf(item.File.Parent.Size())
-		gradientCode := gradientANSI(percent)
-		name := item.File.Name
-		if iconStyle == stexmodel.IconEmoji {
-			name = "📄 " + name
-		}
-		return table.Row{
-			gradientCode + fmt.Sprintf("%5.2f%%", percent) + "\033[39m",
-			gradientCode + " " + item.File.Size.String() + " \033[39m",
-			" " + name + " ",
-		}
-	case stexmodel.TKDir:
-		percent := item.Dir.Size().PercentOf(item.Dir.Parent.Size())
-		gradientCode := gradientANSI(percent)
-		name := item.Dir.Name
-		if iconStyle == stexmodel.IconEmoji {
-			name = "📁 " + name
-		}
-		return table.Row{
-			gradientCode + fmt.Sprintf("%5.2f%%", percent) + "\033[39m",
-			gradientCode + " " + item.Dir.Size().String() + " \033[39m",
-			" " + name + " ",
-		}
+	case stexmodel.TKFile, stexmodel.TKDir:
+		return buildRow(item.Name(), item.Icon(), item.Size(), item.ParentDir().Size(), iconStyle)
 	case stexmodel.TKUpLink:
 		return table.Row{"", "", "   ..  "}
 	}
 	return table.Row{}
 }
 
-// gradientANSI returns an ANSI foreground code for a percentage 0–100,
-// mapping green → yellow → red.
+func buildRow(name, emoji string, size, parentSize stexmodel.Size, iconStyle stexmodel.IconStyle) table.Row {
+	percent := size.PercentOf(parentSize)
+	gradientCode := gradientANSI(percent)
+	if iconStyle == stexmodel.IconEmoji {
+		name = emoji + " " + name
+	}
+	return table.Row{
+		gradientCode + fmt.Sprintf("%5.2f%%", percent) + "\033[39m",
+		gradientCode + " " + size.String() + " \033[39m",
+		" " + name + " ",
+	}
+}
+
+// gradientANSI maps a percentage 0-100 to a green-yellow-red ANSI color.
 func gradientANSI(percent float64) string {
 	if percent < 0 {
 		percent = 0
@@ -234,8 +228,7 @@ func (m *model) handleWindowSize(msg tea.WindowSizeMsg) *model {
 	return m
 }
 
-// handleScanTick polls the scan state. When the scan finishes it wires the
-// root directory and switches to the main view.
+// handleScanTick polls the scan state and switches to the main view when done.
 func (m *model) handleScanTick() (tea.Model, tea.Cmd) {
 	if m.ready {
 		return m, nil
@@ -268,13 +261,6 @@ func (m *model) handleKeyPress(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	if m.screen == screenHelp {
-		if key.Matches(msg, m.keys.Help) || key.Matches(msg, m.keys.Back) {
-			m.screen = screenMain
-		}
-		return m, nil
-	}
-
 	if key.Matches(msg, m.keys.Quit) {
 		return m, tea.Quit
 	}
@@ -284,11 +270,11 @@ func (m *model) handleKeyPress(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	if cmd != nil {
 		return m, cmd
 	}
+	m.updateInfo()
 
 	switch {
 	case key.Matches(msg, m.keys.Help):
-		m.screen = screenHelp
-		m.help.ShowAll = true
+		m.help.ShowAll = !m.help.ShowAll
 
 	case key.Matches(msg, m.keys.Enter):
 		m.enterSelected()
@@ -318,6 +304,7 @@ func (m *model) handleKeyPress(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 
 // enterSelected opens the currently selected directory or navigates up.
 func (m *model) enterSelected() {
+	m.infoPath = ""
 	if len(m.items) == 0 {
 		return
 	}
@@ -325,28 +312,32 @@ func (m *model) enterSelected() {
 	if idx < 0 || idx >= len(m.items) {
 		return
 	}
+	m.current.LastCursor = idx
+
 	item := m.items[idx]
 	switch item.Kind {
 	case stexmodel.TKDir:
 		m.current = item.Dir
-		m.items = stexmodel.ComputeItems(m.current, m.cfg)
-		m.rebuildRows()
-		m.tableView.SetCursor(0)
 	case stexmodel.TKUpLink:
 		m.current = item.Parent
-		m.items = stexmodel.ComputeItems(m.current, m.cfg)
-		m.rebuildRows()
-		m.tableView.SetCursor(0)
+	default:
+		return
 	}
+	m.items = stexmodel.ComputeItems(m.current, m.cfg)
+	m.rebuildRows()
+	m.tableView.SetCursor(m.current.LastCursor)
 }
 
 // goToParent moves the view up one directory level.
 func (m *model) goToParent() {
-	if m.current.Parent != nil {
-		m.current = m.current.Parent
-		m.rebuildItems()
-		m.tableView.SetCursor(0)
+	m.infoPath = ""
+	if m.current.Parent == nil {
+		return
 	}
+	m.current.LastCursor = m.tableView.Cursor()
+	m.current = m.current.Parent
+	m.rebuildItems()
+	m.tableView.SetCursor(m.current.LastCursor)
 }
 
 // rebuildItems recomputes the item list from the current directory and
@@ -356,16 +347,53 @@ func (m *model) rebuildItems() {
 	m.rebuildRows()
 }
 
-// handleMouseClick selects the clicked data row and opens directories.
-// Clicks on the table header row are forwarded to handleHeaderClick to
-// trigger sorting.
+// updateInfo refreshes the cached right-pane content for the currently
+// selected item. It returns immediately when the selection has not changed.
+func (m *model) updateInfo() {
+	if !m.ready {
+		return
+	}
+	idx := m.tableView.Cursor()
+	if idx < 0 || idx >= len(m.items) {
+		return
+	}
+	item := m.items[idx]
+	path := item.FullPath()
+	if path == m.infoPath {
+		return
+	}
+	m.infoPath = path
+
+	if item.Kind == stexmodel.TKUpLink {
+		m.infoContent = ""
+		return
+	}
+
+	info := stexmodel.NewFileInfo(path)
+	if item.Kind == stexmodel.TKDir {
+		children := stexmodel.NewChildrenInfo(item.Dir, maxChildren)
+		m.infoContent = stexview.RenderDirInfo(item.Dir, info, children, infoPanelWidth, infoPanelHeight)
+	} else {
+		m.infoContent = stexview.RenderFileInfo(info, infoPanelWidth, infoPanelHeight)
+	}
+}
+
+// handleMouseClick selects the clicked row or triggers header sorting.
 func (m *model) handleMouseClick(msg tea.MouseClickMsg) (tea.Model, tea.Cmd) {
-	if !m.ready || m.screen != screenMain {
+	if !m.ready {
 		return m, nil
 	}
 	mouse := msg.Mouse()
 	clickY := mouse.Y - 1
 	clickX := mouse.X - 1
+
+	// In split view, ignore clicks in the right pane
+	if m.width-2 >= splitViewThreshold {
+		leftWidth := (m.width-2)/2 - 1
+		if clickX >= leftWidth+1 {
+			return m, nil
+		}
+	}
 
 	if clickY == 2 {
 		m.handleHeaderClick(clickX)
@@ -377,18 +405,7 @@ func (m *model) handleMouseClick(msg tea.MouseClickMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 	m.tableView.SetCursor(rowIndex)
-
-	item := m.items[rowIndex]
-	switch item.Kind {
-	case stexmodel.TKDir:
-		m.current = item.Dir
-		m.rebuildItems()
-		m.tableView.SetCursor(0)
-	case stexmodel.TKUpLink:
-		m.current = item.Parent
-		m.rebuildItems()
-		m.tableView.SetCursor(0)
-	}
+	m.enterSelected()
 	return m, nil
 }
 
@@ -424,19 +441,19 @@ func (m *model) handleHeaderClick(clickX int) {
 
 // handleMouseWheel scrolls the table up or down by three rows.
 func (m *model) handleMouseWheel(msg tea.MouseWheelMsg) *model {
-	if !m.ready || m.screen != screenMain {
+	if !m.ready {
 		return m
 	}
 	if msg.Button == tea.MouseWheelUp {
-		m.tableView.MoveUp(3)
+		m.tableView.MoveUp(scrollLines)
 	} else {
-		m.tableView.MoveDown(3)
+		m.tableView.MoveDown(scrollLines)
 	}
 	return m
 }
 
-// View renders the current screen: scan progress, main file listing with
-// table, or the main listing overlaid with the help dialog.
+// View renders the current screen: scan progress or file listing with help
+// and optionally a right info panel on wide terminals.
 func (m *model) View() tea.View {
 	if !m.ready {
 		return m.loadingView()
@@ -445,41 +462,113 @@ func (m *model) View() tea.View {
 	innerWidth := m.width - 2
 	innerHeight := m.height - 2
 
+	if innerWidth >= splitViewThreshold {
+		return m.splitView(innerWidth, innerHeight)
+	}
+
+	helpStr, helpHeight := m.renderHelp(innerWidth)
+	contentHeight := innerHeight - 2 - helpHeight
+	if contentHeight < 0 {
+		contentHeight = 0
+	}
+
 	lines := make([]string, innerHeight)
+	lines[0] = stexview.Title(m.current, innerWidth, m.cfg.IconStyle, stexmodel.GroupingString(m.cfg.Grouping))
+	lines[1] = dimStyle.Render(strings.Repeat("─", innerWidth))
 
-	lines[0] = stexview.Title(m.current, innerWidth, m.cfg.IconStyle)
-	lines[1] = strings.Repeat("─", innerWidth)
+	fillTable(lines, contentHeight, m.tableView.View())
 
-	tableContent := m.tableView.View()
+	helpStart := 2 + contentHeight
+	for i := 0; i < helpHeight && helpStart+i < innerHeight; i++ {
+		lines[helpStart+i] = helpStr[i]
+	}
+	for i := helpStart + helpHeight; i < innerHeight; i++ {
+		lines[i] = ""
+	}
+
+	return m.wrapView(strings.Join(lines, "\n"))
+}
+
+// renderHelp returns the rendered help text and its line count.
+func (m *model) renderHelp(width int) ([]string, int) {
+	content := m.help.View(m.keys)
+	if content != "" {
+		content = lipgloss.NewStyle().Width(width).Align(lipgloss.Center).Render(content)
+	}
+	lines := strings.Split(content, "\n")
+	return lines, len(lines)
+}
+
+// fillTable copies table lines into the content area of lines.
+func fillTable(lines []string, contentHeight int, tableContent string) {
 	tableLines := strings.Split(tableContent, "\n")
-	availableSlots := innerHeight - 2
-
-	for i := 0; i < availableSlots-1 && i < len(tableLines); i++ {
+	for i := 0; i < contentHeight && i < len(tableLines); i++ {
 		lines[2+i] = tableLines[i]
 	}
-	for i := len(tableLines); i < availableSlots-1; i++ {
+	for i := len(tableLines); i < contentHeight; i++ {
 		lines[2+i] = ""
 	}
+}
 
-	grouping := stexmodel.GroupingString(m.cfg.Grouping)
-	lines[innerHeight-1] = fmt.Sprintf(" (q) quit  (?) help  |  %s", grouping)
-
-	inner := strings.Join(lines, "\n")
-
-	if m.screen == screenHelp {
-		inner = overlayCenter(inner, m.buildHelpDialog(innerWidth, innerHeight))
-	}
-
-	v := tea.NewView(borderStyle.Render(inner))
+// wrapView applies the border and screen settings to content.
+func (m *model) wrapView(content string) tea.View {
+	v := tea.NewView(borderStyle.Render(content))
 	v.AltScreen = true
 	v.MouseMode = tea.MouseModeCellMotion
 	return v
 }
 
-// loadingView renders the scan progress dialog centred in the terminal.
+// splitView renders the dual-pane layout with info on the right.
+func (m *model) splitView(innerWidth, innerHeight int) tea.View {
+	m.updateInfo()
+
+	leftWidth := innerWidth/2 - 1
+	rightWidth := innerWidth - leftWidth - 1
+
+	grouping := stexmodel.GroupingString(m.cfg.Grouping)
+	titleLine := stexview.Title(m.current, innerWidth, m.cfg.IconStyle, grouping)
+	sepLine := dimStyle.Render(strings.Repeat("─", innerWidth))
+
+	helpStr, helpHeight := m.renderHelp(innerWidth)
+	contentHeight := innerHeight - 2 - helpHeight
+	if contentHeight < 0 {
+		contentHeight = 0
+	}
+
+	leftContent := renderPadded(m.tableView.View(), contentHeight)
+
+	var rightContent string
+	if m.infoContent != "" {
+		rightContent = renderPadded(m.infoContent, contentHeight)
+	}
+
+	combined := stexview.Split(leftContent, rightContent, leftWidth, rightWidth, dimStyle.Render("│"))
+
+	body := titleLine + "\n" + sepLine + "\n" + combined + "\n" + strings.Join(helpStr, "\n")
+	return m.wrapView(body)
+}
+
+// renderPadded pads content to exactly height lines.
+func renderPadded(content string, height int) string {
+	lines := strings.Split(content, "\n")
+	out := make([]string, height)
+	for i := 0; i < height && i < len(lines); i++ {
+		out[i] = lines[i]
+	}
+	for i := len(lines); i < height; i++ {
+		out[i] = ""
+	}
+	return strings.Join(out, "\n")
+}
+
+// loadingView renders the scan progress dialog centred.
 func (m *model) loadingView() tea.View {
 	innerWidth := m.width - 2
-	progress := stexview.Progress(m.scanState, innerWidth)
+	innerHeight := m.height - loadingMargin
+	if innerHeight < minDialogHeight {
+		innerHeight = minDialogHeight
+	}
+	progress := stexview.Progress(m.scanState, innerWidth, innerHeight)
 	dialog := scanBorderStyle.Render(progress)
 	emptyLine := strings.Repeat(" ", m.width)
 	bgLines := make([]string, m.height)
@@ -494,28 +583,4 @@ func (m *model) loadingView() tea.View {
 	return v
 }
 
-// buildHelpDialog returns a bordered box containing key bindings and the
-// current configuration summary.
-func (m *model) buildHelpDialog(innerWidth, innerHeight int) string {
-	helpContent := m.help.View(m.keys)
 
-	configLines := fmt.Sprintf("sort by: %s %s  |  grouping: %s",
-		map[bool]string{true: "name", false: "size"}[m.cfg.SortBy == stexmodel.SortByName],
-		map[bool]string{true: "↑", false: "↓"}[m.cfg.SortOrder == stexmodel.Ascending],
-		stexmodel.GroupingString(m.cfg.Grouping),
-	)
-
-	helpLines := strings.Split(helpContent, "\n")
-
-	dialogLines := make([]string, 0, len(helpLines)+6)
-	dialogLines = append(dialogLines, dialogTitleStyle.Render(" Help "))
-	dialogLines = append(dialogLines, "")
-	dialogLines = append(dialogLines, helpLines...)
-	dialogLines = append(dialogLines, "")
-	dialogLines = append(dialogLines, dialogFooterStyle.Render(configLines))
-	dialogLines = append(dialogLines, "")
-		dialogLines = append(dialogLines, dialogFooterStyle.Render(" (?) close  |  (q) quit "))
-
-	content := strings.Join(dialogLines, "\n")
-	return dialogBoxStyle.Render(content)
-}

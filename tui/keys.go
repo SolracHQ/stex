@@ -36,19 +36,19 @@ func (k keyMap) FullHelp() [][]key.Binding {
 var appKeys = keyMap{
 	Up: key.NewBinding(
 		key.WithKeys("up", "k"),
-		key.WithHelp("up/k", "move up"),
+		key.WithHelp("↑/k", "move up"),
 	),
 	Down: key.NewBinding(
 		key.WithKeys("down", "j"),
-		key.WithHelp("down/j", "move down"),
+		key.WithHelp("↓/j", "move down"),
 	),
 	Enter: key.NewBinding(
 		key.WithKeys("enter", "l", "right"),
-		key.WithHelp("enter/l", "open directory"),
+		key.WithHelp("enter/l/→", "open directory"),
 	),
 	Back: key.NewBinding(
 		key.WithKeys("esc", "backspace", "h", "left"),
-		key.WithHelp("esc/h", "go up"),
+		key.WithHelp("esc/h/←", "go up"),
 	),
 	Sort: key.NewBinding(
 		key.WithKeys("s"),

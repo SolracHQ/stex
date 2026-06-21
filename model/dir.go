@@ -9,20 +9,22 @@ import (
 
 // File represents a regular file in the file tree.
 type File struct {
-	Name     string // basename of the file
-	Size     Size   // size in bytes
-	Parent   *Dir   // parent directory
-	FullPath string // absolute path
+	Name     string
+	Size     Size
+	Parent   *Dir
+	FullPath string
 }
 
 // Dir represents a directory in the file tree.
 type Dir struct {
-	Name     string // basename with trailing "/" for children, full path for root
-	Parent   *Dir   // parent directory, nil for root
-	Files    []File
-	Dirs     []*Dir
-	FullPath string  // absolute path
-	size     Size    // cached total size, computed lazily by Size()
+	Name       string
+	Parent     *Dir // nil for root
+	Files      []File
+	Dirs       []*Dir
+	FullPath   string
+	LastCursor int
+	size       Size
+	count      Count
 }
 
 // ScanState holds live progress data for the async directory scan.
@@ -74,44 +76,18 @@ func BuildTree(path string, state *ScanState) {
 		state.CurrentPath = entry.path
 		state.Mu.Unlock()
 
-		entries, err := os.ReadDir(entry.path)
+		items, size, err := readDir(entry.path, entry.dir)
 		if err != nil {
 			state.Mu.Lock()
-			state.Warnings = append(state.Warnings, fmt.Sprintf("Warning: error scanning %s", entry.path))
+			state.Warnings = append(state.Warnings, fmt.Sprintf("error scanning %s", entry.path))
 			state.Mu.Unlock()
-			continue
 		}
 
-		for _, dirent := range entries {
-			name := dirent.Name()
-			fullPath := filepath.Join(entry.path, name)
-
-			info, err := dirent.Info()
-			if err != nil {
-				continue
-			}
-
-			if dirent.IsDir() {
-				child := &Dir{
-					Name:     name + "/",
-					Parent:   entry.dir,
-					FullPath: fullPath,
-				}
-				entry.dir.Dirs = append(entry.dir.Dirs, child)
-				stack = append(stack, stackEntry{path: fullPath, dir: child})
-				totalItems++
-			} else {
-				fileSize := Size(info.Size())
-				entry.dir.Files = append(entry.dir.Files, File{
-					Name:     name,
-					Size:     fileSize,
-					Parent:   entry.dir,
-					FullPath: fullPath,
-				})
-				totalItems++
-				totalSize += fileSize
-			}
+		for _, child := range entry.dir.Dirs {
+			stack = append(stack, stackEntry{path: child.FullPath, dir: child})
 		}
+		totalItems += items
+		totalSize += size
 
 		state.Mu.Lock()
 		state.TotalItems = totalItems
@@ -127,7 +103,45 @@ func BuildTree(path string, state *ScanState) {
 	state.Mu.Unlock()
 }
 
-// Size returns the total file size under d, cached after first call.
+// readDir reads a single directory, populating parent.Files and parent.Dirs.
+func readDir(path string, parent *Dir) (items int64, addedSize Size, err error) {
+	entries, readErr := os.ReadDir(path)
+	if readErr != nil {
+		return 0, 0, readErr
+	}
+	for _, dirent := range entries {
+		name := dirent.Name()
+		fullPath := filepath.Join(path, name)
+
+		info, statErr := dirent.Info()
+		if statErr != nil {
+			continue
+		}
+
+		if dirent.IsDir() {
+			child := &Dir{
+				Name:     name + "/",
+				Parent:   parent,
+				FullPath: fullPath,
+			}
+			parent.Dirs = append(parent.Dirs, child)
+			items++
+		} else {
+			fileSize := Size(info.Size())
+			parent.Files = append(parent.Files, File{
+				Name:     name,
+				Size:     fileSize,
+				Parent:   parent,
+				FullPath: fullPath,
+			})
+			items++
+			addedSize += fileSize
+		}
+	}
+	return
+}
+
+// Size returns the total file size under d.
 func (d *Dir) Size() Size {
 	if d.size > 0 {
 		return d.size
@@ -149,13 +163,16 @@ type Count struct {
 	Dirs  int
 }
 
-// Count returns total files and directories under d.
+// Count returns total files and directories under d, cached after first call.
 func (d *Dir) Count() Count {
-	count := Count{Files: len(d.Files), Dirs: len(d.Dirs)}
+	if d.count.Files != 0 || d.count.Dirs != 0 {
+		return d.count
+	}
+	d.count = Count{Files: len(d.Files), Dirs: len(d.Dirs)}
 	for _, subDir := range d.Dirs {
 		subCount := subDir.Count()
-		count.Files += subCount.Files
-		count.Dirs += subCount.Dirs
+		d.count.Files += subCount.Files
+		d.count.Dirs += subCount.Dirs
 	}
-	return count
+	return d.count
 }

@@ -9,11 +9,11 @@ import (
 
 // Title renders the title bar in the format:
 //
-//	1.23 GB | 42f - 3d | /path...
+//	mode | 1.23 GB | 42f - 3d | /path...
 //
-// Size is always fully visible on the left. The path is truncated from the
-// left with /.../ when the line exceeds width.
-func Title(dir *model.Dir, width int, iconStyle model.IconStyle) string {
+// The grouping mode is shown first. Size is never truncated. The path is
+// shortened from the left with /.../ when the line exceeds width.
+func Title(dir *model.Dir, width int, iconStyle model.IconStyle, grouping string) string {
 	count := dir.Count()
 	sizeStr := dir.Size().String()
 
@@ -27,20 +27,23 @@ func Title(dir *model.Dir, width int, iconStyle model.IconStyle) string {
 
 	sep := " | "
 
-	// Build left to right: size | counts | path
-	leftPart := sizeStr + sep + countsStr
+	// Build left to right: mode | size | counts | path
+	modePart := grouping
+	rightPart := sizeStr + sep + countsStr // protected part: size + counts
 
-	if len(leftPart)+len(sep) >= width {
-		// Not enough room for counts — show just size
+	// Check if mode + size + counts fits
+	prefix := modePart + sep + rightPart
+	if len(prefix)+len(sep) >= width {
+		// Narrow: show just mode | size
 		pathPart := dir.FullPath
-		avail := width - len(sizeStr) - len(sep)
+		avail := width - len(modePart) - len(sep) - len(sizeStr) - len(sep)
 		if avail < 0 {
 			avail = 0
 		}
 		if len(pathPart) > avail {
 			pathPart = shortenTitlePath(pathPart, avail)
 		}
-		text := sizeStr + sep + pathPart
+		text := modePart + sep + sizeStr + sep + pathPart
 		if len(text) < width {
 			pad := width - len(text)
 			leftPad := pad / 2
@@ -49,15 +52,16 @@ func Title(dir *model.Dir, width int, iconStyle model.IconStyle) string {
 		return text
 	}
 
+	// Full: mode | size | counts | path
 	pathPart := dir.FullPath
-	avail := width - len(leftPart) - len(sep)
+	avail := width - len(prefix) - len(sep)
 	if avail < 0 {
 		avail = 0
 	}
 	if len(pathPart) > avail {
 		pathPart = shortenTitlePath(pathPart, avail)
 	}
-	text := leftPart + sep + pathPart
+	text := prefix + sep + pathPart
 	if len(text) < width {
 		pad := width - len(text)
 		leftPad := pad / 2

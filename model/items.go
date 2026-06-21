@@ -19,65 +19,82 @@ type TreeItem struct {
 	Parent *Dir // set for TKUpLink
 }
 
+// Name returns the display name of the item.
+func (ti TreeItem) Name() string {
+	switch ti.Kind {
+	case TKFile:
+		return ti.File.Name
+	case TKDir:
+		return ti.Dir.Name
+	}
+	return ""
+}
+
+// Size returns the size of the item.
+func (ti TreeItem) Size() Size {
+	switch ti.Kind {
+	case TKFile:
+		return ti.File.Size
+	case TKDir:
+		return ti.Dir.Size()
+	}
+	return 0
+}
+
+// Icon returns the emoji for the item kind.
+func (ti TreeItem) Icon() string {
+	switch ti.Kind {
+	case TKFile:
+		return "📄"
+	case TKDir:
+		return "📁"
+	}
+	return ""
+}
+
+// FullPath returns the absolute path of the item.
+func (ti TreeItem) FullPath() string {
+	switch ti.Kind {
+	case TKFile:
+		return ti.File.FullPath
+	case TKDir:
+		return ti.Dir.FullPath
+	}
+	return ""
+}
+
+// ParentDir returns the parent directory of the item.
+func (ti TreeItem) ParentDir() *Dir {
+	switch ti.Kind {
+	case TKFile:
+		return ti.File.Parent
+	case TKDir:
+		return ti.Dir.Parent
+	case TKUpLink:
+		return ti.Parent
+	}
+	return nil
+}
+
 // ComputeItems returns sorted, grouped items for dir. Prepends an up-link
 // entry when dir has a parent.
 func ComputeItems(dir *Dir, cfg Config) []TreeItem {
-	numFiles := len(dir.Files)
-	numDirs := len(dir.Dirs)
-
-	sortedFiles := make([]File, numFiles)
-	copy(sortedFiles, dir.Files)
-	sortedDirs := make([]*Dir, numDirs)
-	copy(sortedDirs, dir.Dirs)
-
-	sort.Slice(sortedFiles, func(i, j int) bool {
-		less := lessFile(sortedFiles[i], sortedFiles[j], cfg.SortBy)
-		if cfg.SortOrder == Descending {
-			return !less
-		}
-		return less
-	})
-
-	sort.Slice(sortedDirs, func(i, j int) bool {
-		less := lessDir(sortedDirs[i], sortedDirs[j], cfg.SortBy)
-		if cfg.SortOrder == Descending {
-			return !less
-		}
-		return less
-	})
-
 	var items []TreeItem
 
 	switch cfg.Grouping {
 	case FilesFirst:
-		for i := 0; i < numFiles; i++ {
-			items = append(items, TreeItem{Kind: TKFile, File: &sortedFiles[i]})
-		}
-		for i := 0; i < numDirs; i++ {
-			items = append(items, TreeItem{Kind: TKDir, Dir: sortedDirs[i]})
-		}
+		items = appendFileItems(items, sortedFileSlice(dir.Files, cfg))
+		items = appendDirItems(items, sortedDirSlice(dir.Dirs, cfg))
 	case DirsFirst:
-		for i := 0; i < numDirs; i++ {
-			items = append(items, TreeItem{Kind: TKDir, Dir: sortedDirs[i]})
-		}
-		for i := 0; i < numFiles; i++ {
-			items = append(items, TreeItem{Kind: TKFile, File: &sortedFiles[i]})
-		}
+		items = appendDirItems(items, sortedDirSlice(dir.Dirs, cfg))
+		items = appendFileItems(items, sortedFileSlice(dir.Files, cfg))
 	case FilesOnly:
-		for i := 0; i < numFiles; i++ {
-			items = append(items, TreeItem{Kind: TKFile, File: &sortedFiles[i]})
-		}
+		items = appendFileItems(items, sortedFileSlice(dir.Files, cfg))
 	case DirsOnly:
-		for i := 0; i < numDirs; i++ {
-			items = append(items, TreeItem{Kind: TKDir, Dir: sortedDirs[i]})
-		}
+		items = appendDirItems(items, sortedDirSlice(dir.Dirs, cfg))
 	case Mixed:
-		for i := 0; i < numFiles; i++ {
-			items = append(items, TreeItem{Kind: TKFile, File: &sortedFiles[i]})
-		}
-		for i := 0; i < numDirs; i++ {
-			items = append(items, TreeItem{Kind: TKDir, Dir: sortedDirs[i]})
-		}
+		items = appendFileItems(items, dir.Files)
+		items = appendDirItems(items, dir.Dirs)
 		sort.Slice(items, func(i, j int) bool {
 			less := lessItem(items[i], items[j], cfg.SortBy)
 			if cfg.SortOrder == Descending {
@@ -117,29 +134,49 @@ func lessDir(a *Dir, b *Dir, by SortBy) bool {
 func lessItem(a TreeItem, b TreeItem, by SortBy) bool {
 	switch by {
 	case SortByName:
-		return itemName(a) < itemName(b)
+		return a.Name() < b.Name()
 	case SortBySize:
-		return itemSize(a) < itemSize(b)
+		return a.Size() < b.Size()
 	}
 	return false
 }
 
-func itemName(item TreeItem) string {
-	switch item.Kind {
-	case TKFile:
-		return item.File.Name
-	case TKDir:
-		return item.Dir.Name
-	}
-	return ""
+func sortedFileSlice(files []File, cfg Config) []File {
+	out := make([]File, len(files))
+	copy(out, files)
+	sort.Slice(out, func(i, j int) bool {
+		less := lessFile(out[i], out[j], cfg.SortBy)
+		if cfg.SortOrder == Descending {
+			return !less
+		}
+		return less
+	})
+	return out
 }
 
-func itemSize(item TreeItem) Size {
-	switch item.Kind {
-	case TKFile:
-		return item.File.Size
-	case TKDir:
-		return item.Dir.Size()
+func sortedDirSlice(dirs []*Dir, cfg Config) []*Dir {
+	out := make([]*Dir, len(dirs))
+	copy(out, dirs)
+	sort.Slice(out, func(i, j int) bool {
+		less := lessDir(out[i], out[j], cfg.SortBy)
+		if cfg.SortOrder == Descending {
+			return !less
+		}
+		return less
+	})
+	return out
+}
+
+func appendFileItems(items []TreeItem, files []File) []TreeItem {
+	for i := range files {
+		items = append(items, TreeItem{Kind: TKFile, File: &files[i]})
 	}
-	return 0
+	return items
+}
+
+func appendDirItems(items []TreeItem, dirs []*Dir) []TreeItem {
+	for _, d := range dirs {
+		items = append(items, TreeItem{Kind: TKDir, Dir: d})
+	}
+	return items
 }

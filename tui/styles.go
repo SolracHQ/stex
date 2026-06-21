@@ -8,12 +8,10 @@ import (
 var (
 	scanBorderStyle = lipgloss.NewStyle().Border(lipgloss.NormalBorder()).BorderForeground(lipgloss.Color("240"))
 	borderStyle     = lipgloss.NewStyle().Border(lipgloss.NormalBorder()).BorderForeground(lipgloss.Color("240"))
+	dimStyle        = lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
 	helpKeyStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("14"))
 	helpDescStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("7"))
-	helpSepStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
-	dialogBoxStyle  = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(lipgloss.Color("14")).Padding(1, 2)
-	dialogTitleStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("14")).Bold(true)
-	dialogFooterStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
+	helpSepStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
 )
 
 func tableStyles() table.Styles {

@@ -7,15 +7,24 @@ import (
 	"github.com/SolracHQ/stex/model"
 )
 
+const (
+	progressOverhead   = 9
+	commaGroupSize     = 3
+	shortenMinLen      = 5
+	shortenEllipsisLen = 3
+)
+
 // Progress renders the scan progress dialog with current path, item count,
-// total size, and any warnings.
-func Progress(state *model.ScanState, width int) string {
+// total size, and any warnings. height is the available lines inside the dialog.
+func Progress(state *model.ScanState, width, height int) string {
 	state.Mu.Lock()
 	currentPath := state.CurrentPath
 	total := state.TotalItems
 	totalSize := state.TotalSize
 	warnings := state.Warnings
 	state.Mu.Unlock()
+
+	totalWarnings := len(warnings)
 
 	var body strings.Builder
 	body.WriteString(" Scanning...")
@@ -31,17 +40,34 @@ func Progress(state *model.ScanState, width int) string {
 		pathStr = shortenPath(pathStr, maxPath)
 	}
 	body.WriteString(fmt.Sprintf("  %s", pathStr))
-	body.WriteString("\n\n")
+	body.WriteString("\n")
 
-	for _, wl := range warnings {
-		maxW := width - 2
-		if len(wl) > maxW {
-			wl = wl[:maxW]
-		}
-		body.WriteString(fmt.Sprintf(" %s", wl))
+	if totalWarnings > 0 {
 		body.WriteString("\n")
-	}
-	if len(warnings) > 0 {
+		avail := height - progressOverhead
+		if avail < 1 {
+			avail = 1
+		}
+		body.WriteString(fmt.Sprintf(" WARNING: %d %s - sizes may be inaccurate", totalWarnings, plural("error", totalWarnings)))
+		body.WriteString("\n")
+
+		start := 0
+		if totalWarnings > avail {
+			start = totalWarnings - avail + 1
+			body.WriteString(fmt.Sprintf(" ... (%d more) ...", totalWarnings-avail))
+			body.WriteString("\n")
+		}
+		for i := start; i < totalWarnings; i++ {
+			wl := warnings[i]
+			maxW := width - 2
+			if len(wl) > maxW {
+				wl = wl[:maxW]
+			}
+			body.WriteString(fmt.Sprintf(" %s", wl))
+			body.WriteString("\n")
+		}
+		body.WriteString("\n")
+	} else {
 		body.WriteString("\n")
 	}
 
@@ -56,15 +82,23 @@ func Progress(state *model.ScanState, width int) string {
 	return strings.Join(lines, "\n")
 }
 
+// plural returns s when n == 1, otherwise appends "s".
+func plural(s string, n int) string {
+	if n == 1 {
+		return s
+	}
+	return s + "s"
+}
+
 // commaFormat formats n with thousands separators.
 func commaFormat(n int64) string {
 	s := fmt.Sprintf("%d", n)
-	if len(s) <= 3 {
+	if len(s) <= commaGroupSize {
 		return s
 	}
 	var result []byte
 	for i, c := range s {
-		if i > 0 && (len(s)-i)%3 == 0 {
+		if i > 0 && (len(s)-i)%commaGroupSize == 0 {
 			result = append(result, ',')
 		}
 		result = append(result, byte(c))
@@ -77,9 +111,9 @@ func shortenPath(path string, maxLen int) string {
 	if len(path) <= maxLen {
 		return path
 	}
-	if maxLen < 5 {
+	if maxLen < shortenMinLen {
 		return path[:maxLen]
 	}
-	keep := (maxLen - 3) / 2
+	keep := (maxLen - shortenEllipsisLen) / 2
 	return path[:keep] + "..." + path[len(path)-keep:]
 }

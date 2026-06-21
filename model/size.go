@@ -2,6 +2,10 @@ package model
 
 import "fmt"
 
+const bytesPerUnit = 1024
+
+var sizeUnits = [...]string{"B", "KB", "MB", "GB", "TB", "PB"}
+
 // Size represents a file size in bytes. It is a distinct uint64 that
 // formats as a human-readable string (e.g. "1.23 GB").
 type Size uint64
@@ -11,14 +15,13 @@ func (s Size) String() string {
 	if s == 0 {
 		return "0 B"
 	}
-	units := []string{"B", "KB", "MB", "GB", "TB", "PB"}
 	index := 0
 	value := float64(s)
-	for value >= 1024 && index < len(units)-1 {
-		value /= 1024
+	for value >= bytesPerUnit && index < len(sizeUnits)-1 {
+		value /= bytesPerUnit
 		index++
 	}
-	return fmt.Sprintf("%.2f %s", value, units[index])
+	return fmt.Sprintf("%.2f %s", value, sizeUnits[index])
 }
 
 // PercentOf returns s as a percentage of total (e.g. 12.34).
