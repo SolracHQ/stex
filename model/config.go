@@ -1,5 +1,7 @@
 package model
 
+import "regexp"
+
 // SortBy describes which field to sort directory contents by.
 type SortBy int
 
@@ -37,19 +39,22 @@ const (
 
 // Config holds the current sort, filter, and display settings.
 type Config struct {
-	SortBy    SortBy
-	SortOrder SortOrder
-	Grouping  Grouping
-	IconStyle IconStyle
+	SortBy     SortBy
+	SortOrder  SortOrder
+	Grouping   Grouping
+	IconStyle  IconStyle
+	ShowHidden bool
+	Filter     *regexp.Regexp
 }
 
 // DefaultConfig returns size-descending sort with mixed grouping.
 func DefaultConfig() Config {
 	return Config{
-		SortBy:    SortBySize,
-		SortOrder: Descending,
-		Grouping:  Mixed,
-		IconStyle: IconLetters,
+		SortBy:     SortBySize,
+		SortOrder:  Descending,
+		Grouping:   Mixed,
+		IconStyle:  IconLetters,
+		ShowHidden: false,
 	}
 }
 

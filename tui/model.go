@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"math"
+	"regexp"
 	"strings"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 	"charm.land/bubbles/v2/help"
 	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/table"
+	"charm.land/bubbles/v2/textinput"
 	"charm.land/lipgloss/v2"
 	tea "charm.land/bubbletea/v2"
 )
@@ -26,6 +28,13 @@ const (
 	infoPanelWidth     = 80
 	infoPanelHeight    = 10
 )
+
+// Flags holds startup options passed from the CLI.
+type Flags struct {
+	Icons       bool
+	ShowAll     bool
+	LiveFilter  bool
+}
 
 type scanTickMsg struct{}
 
@@ -49,10 +58,14 @@ type model struct {
 
 	infoPath    string
 	infoContent string
+
+	filterInput textinput.Model
+	filtering   bool
+	liveFilter  bool
 }
 
 // New creates and returns a new Bubble Tea model for the given directory path.
-func New(path string) tea.Model {
+func New(path string, flags Flags) tea.Model {
 	helpModel := help.New()
 	helpModel.Styles.FullKey = helpKeyStyle
 	helpModel.Styles.FullDesc = helpDescStyle
@@ -60,6 +73,18 @@ func New(path string) tea.Model {
 	helpModel.Styles.ShortKey = helpKeyStyle
 	helpModel.Styles.ShortDesc = helpDescStyle
 	helpModel.Styles.ShortSeparator = helpSepStyle
+
+	cfg := stexmodel.DefaultConfig()
+	if flags.Icons {
+		cfg.IconStyle = stexmodel.IconEmoji
+	}
+	if flags.ShowAll {
+		cfg.ShowHidden = true
+	}
+
+	fi := textinput.New()
+	fi.Prompt = "/"
+	fi.Placeholder = "regex"
 
 	tableView := table.New(
 		table.WithColumns([]table.Column{
@@ -72,13 +97,15 @@ func New(path string) tea.Model {
 	)
 
 	return &model{
-		path:   path,
-		cfg:    stexmodel.DefaultConfig(),
-		width:  80,
-		height: 24,
-		keys:   appKeys,
-		help:   helpModel,
-		tableView:    tableView,
+		path:        path,
+		cfg:         cfg,
+		width:       80,
+		height:      24,
+		keys:        appKeys,
+		help:        helpModel,
+		tableView:   tableView,
+		filterInput: fi,
+		liveFilter:  flags.LiveFilter,
 	}
 }
 
@@ -225,6 +252,7 @@ func (m *model) handleWindowSize(msg tea.WindowSizeMsg) *model {
 	}
 	m.tableView.SetWidth(innerWidth)
 	m.tableView.SetHeight(innerHeight - 3)
+	m.filterInput.SetWidth(innerWidth - 1)
 	return m
 }
 
@@ -249,7 +277,7 @@ func (m *model) handleScanTick() (tea.Model, tea.Cmd) {
 }
 
 // handleKeyPress routes keyboard input. It delegates navigation to the table,
-// handles quit/help/enter/back, and toggles sort, group, order, and icons.
+// handles quit/help/enter/back, and toggles sort, group, order, icons, and filter.
 func (m *model) handleKeyPress(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	if !m.ready {
 		if key.Matches(msg, m.keys.Quit) {
@@ -259,6 +287,10 @@ func (m *model) handleKeyPress(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		}
 		return m, nil
+	}
+
+	if m.filtering {
+		return m.handleFilterKeyPress(msg)
 	}
 
 	if key.Matches(msg, m.keys.Quit) {
@@ -297,13 +329,101 @@ func (m *model) handleKeyPress(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, m.keys.Icons):
 		m.cfg.IconStyle.Toggle()
 		m.rebuildRows()
+
+	case key.Matches(msg, m.keys.Hidden):
+		m.cfg.ShowHidden = !m.cfg.ShowHidden
+		m.rebuildItems()
+
+	case key.Matches(msg, m.keys.Search):
+		m.filtering = true
+		m.filterInput.Reset()
+		cmd = m.filterInput.Focus()
+
+	case key.Matches(msg, m.keys.ClearFilter):
+		if m.cfg.Filter != nil {
+			m.clearFilter()
+			m.rebuildItems()
+		}
+	}
+	return m, cmd
+}
+
+// handleFilterKeyPress handles keystrokes while the search bar is active.
+func (m *model) handleFilterKeyPress(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	if key.Matches(msg, filterKeys.Confirm) {
+		m.filtering = false
+		m.filterInput.Blur()
+
+		if !m.liveFilter {
+			pattern := m.filterInput.Value()
+			if pattern == "" {
+				m.cfg.Filter = nil
+			} else {
+				re, err := regexp.Compile(pattern)
+				if err == nil {
+					m.cfg.Filter = re
+				}
+			}
+			m.rebuildItems()
+		}
+		return m, nil
 	}
 
-	return m, nil
+	if key.Matches(msg, filterKeys.Cancel) {
+		m.clearFilter()
+		m.rebuildItems()
+		return m, nil
+	}
+
+	if msg.String() == "ctrl+l" {
+		m.liveFilter = !m.liveFilter
+		if m.liveFilter {
+			pattern := m.filterInput.Value()
+			if pattern == "" {
+				m.cfg.Filter = nil
+			} else {
+				re, err := regexp.Compile(pattern)
+				if err == nil {
+					m.cfg.Filter = re
+				}
+			}
+			m.rebuildItems()
+		} else {
+			m.cfg.Filter = nil
+			m.rebuildItems()
+		}
+		return m, nil
+	}
+
+	var cmd tea.Cmd
+	m.filterInput, cmd = m.filterInput.Update(msg)
+
+	if m.liveFilter {
+		pattern := m.filterInput.Value()
+		if pattern == "" {
+			m.cfg.Filter = nil
+		} else {
+			re, err := regexp.Compile(pattern)
+			if err == nil {
+				m.cfg.Filter = re
+			}
+		}
+		m.rebuildItems()
+	}
+	return m, cmd
+}
+
+// clearFilter resets the filter without rebuilding items.
+func (m *model) clearFilter() {
+	m.filtering = false
+	m.cfg.Filter = nil
+	m.filterInput.Blur()
+	m.filterInput.Reset()
 }
 
 // enterSelected opens the currently selected directory or navigates up.
 func (m *model) enterSelected() {
+	m.clearFilter()
 	m.infoPath = ""
 	if len(m.items) == 0 {
 		return
@@ -330,6 +450,7 @@ func (m *model) enterSelected() {
 
 // goToParent moves the view up one directory level.
 func (m *model) goToParent() {
+	m.clearFilter()
 	m.infoPath = ""
 	if m.current.Parent == nil {
 		return
@@ -452,6 +573,20 @@ func (m *model) handleMouseWheel(msg tea.MouseWheelMsg) *model {
 	return m
 }
 
+// titleGroup returns the grouping label with optional filter/hidden indicators.
+func (m *model) titleGroup() string {
+	g := stexmodel.GroupingString(m.cfg.Grouping)
+	if !m.cfg.ShowHidden {
+		g += " (h)"
+	}
+	if m.cfg.Filter != nil {
+		g += " | /" + m.filterInput.Value() + "/"
+	} else if m.filterInput.Value() != "" && !m.liveFilter {
+		g += " | /" + m.filterInput.Value() + "/ (pending)"
+	}
+	return g
+}
+
 // View renders the current screen: scan progress or file listing with help
 // and optionally a right info panel on wide terminals.
 func (m *model) View() tea.View {
@@ -466,27 +601,35 @@ func (m *model) View() tea.View {
 		return m.splitView(innerWidth, innerHeight)
 	}
 
-	helpStr, helpHeight := m.renderHelp(innerWidth)
-	contentHeight := innerHeight - 2 - helpHeight
+	footerStr, footerHeight := m.renderFooter(innerWidth)
+	contentHeight := innerHeight - 2 - footerHeight
 	if contentHeight < 0 {
 		contentHeight = 0
 	}
 
 	lines := make([]string, innerHeight)
-	lines[0] = stexview.Title(m.current, innerWidth, m.cfg.IconStyle, stexmodel.GroupingString(m.cfg.Grouping))
+	lines[0] = stexview.Title(m.current, innerWidth, m.cfg.IconStyle, m.titleGroup())
 	lines[1] = dimStyle.Render(strings.Repeat("─", innerWidth))
 
 	fillTable(lines, contentHeight, m.tableView.View())
 
-	helpStart := 2 + contentHeight
-	for i := 0; i < helpHeight && helpStart+i < innerHeight; i++ {
-		lines[helpStart+i] = helpStr[i]
+	footerStart := 2 + contentHeight
+	for i := 0; i < footerHeight && footerStart+i < innerHeight; i++ {
+		lines[footerStart+i] = footerStr[i]
 	}
-	for i := helpStart + helpHeight; i < innerHeight; i++ {
+	for i := footerStart + footerHeight; i < innerHeight; i++ {
 		lines[i] = ""
 	}
 
 	return m.wrapView(strings.Join(lines, "\n"))
+}
+// renderFooter returns the footer content and its line count.
+// It dispatches to the help view or the filter bar depending on mode.
+func (m *model) renderFooter(width int) ([]string, int) {
+	if m.filtering {
+		return m.renderFilter(width)
+	}
+	return m.renderHelp(width)
 }
 
 // renderHelp returns the rendered help text and its line count.
@@ -497,6 +640,20 @@ func (m *model) renderHelp(width int) ([]string, int) {
 	}
 	lines := strings.Split(content, "\n")
 	return lines, len(lines)
+}
+
+// renderFilter returns the filter search bar and its line count.
+func (m *model) renderFilter(width int) ([]string, int) {
+	m.filterInput.SetWidth(width - 1)
+	textColor := lipgloss.Color("14")
+	if !m.liveFilter {
+		textColor = lipgloss.Color("11")
+	}
+	s := m.filterInput.Styles()
+	s.Focused.Text = lipgloss.NewStyle().Foreground(textColor)
+	s.Focused.Prompt = lipgloss.NewStyle().Foreground(textColor)
+	m.filterInput.SetStyles(s)
+	return []string{m.filterInput.View()}, 1
 }
 
 // fillTable copies table lines into the content area of lines.
@@ -525,12 +682,11 @@ func (m *model) splitView(innerWidth, innerHeight int) tea.View {
 	leftWidth := innerWidth/2 - 1
 	rightWidth := innerWidth - leftWidth - 1
 
-	grouping := stexmodel.GroupingString(m.cfg.Grouping)
-	titleLine := stexview.Title(m.current, innerWidth, m.cfg.IconStyle, grouping)
+	titleLine := stexview.Title(m.current, innerWidth, m.cfg.IconStyle, m.titleGroup())
 	sepLine := dimStyle.Render(strings.Repeat("─", innerWidth))
 
-	helpStr, helpHeight := m.renderHelp(innerWidth)
-	contentHeight := innerHeight - 2 - helpHeight
+	footerStr, footerHeight := m.renderFooter(innerWidth)
+	contentHeight := innerHeight - 2 - footerHeight
 	if contentHeight < 0 {
 		contentHeight = 0
 	}
@@ -544,7 +700,7 @@ func (m *model) splitView(innerWidth, innerHeight int) tea.View {
 
 	combined := stexview.Split(leftContent, rightContent, leftWidth, rightWidth, dimStyle.Render("│"))
 
-	body := titleLine + "\n" + sepLine + "\n" + combined + "\n" + strings.Join(helpStr, "\n")
+	body := titleLine + "\n" + sepLine + "\n" + combined + "\n" + strings.Join(footerStr, "\n")
 	return m.wrapView(body)
 }
 

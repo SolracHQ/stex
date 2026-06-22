@@ -108,7 +108,30 @@ func ComputeItems(dir *Dir, cfg Config) []TreeItem {
 		items = append([]TreeItem{{Kind: TKUpLink, Parent: dir.Parent}}, items...)
 	}
 
+	items = filterItems(items, cfg)
+
 	return items
+}
+
+func filterItems(items []TreeItem, cfg Config) []TreeItem {
+	if cfg.ShowHidden && cfg.Filter == nil {
+		return items
+	}
+	filtered := make([]TreeItem, 0, len(items))
+	for _, item := range items {
+		if item.Kind == TKUpLink {
+			filtered = append(filtered, item)
+			continue
+		}
+		if !cfg.ShowHidden && len(item.Name()) > 0 && item.Name()[0] == '.' {
+			continue
+		}
+		if cfg.Filter != nil && !cfg.Filter.MatchString(item.Name()) {
+			continue
+		}
+		filtered = append(filtered, item)
+	}
+	return filtered
 }
 
 func lessFile(a File, b File, by SortBy) bool {
