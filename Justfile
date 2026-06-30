@@ -13,7 +13,7 @@ default:
 # build the binary into bin/
 build:
     @mkdir -p {{bin_dir}}
-    go build -o {{bin_path}} .
+    go build -o {{bin_path}} ./cmd/stex
     @echo "built {{bin_path}}"
 
 # remove the bin/ directory

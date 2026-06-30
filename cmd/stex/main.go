@@ -1,10 +1,15 @@
+// stex is an interactive TUI to explore where disk space is being used. The program is a
+// single binary that takes a path argument (defaults to the current directory) and starts a
+// Bubble Tea program.
 package main
 
 import (
 	"fmt"
 	"os"
 
-	"github.com/SolracHQ/stex/tui"
+	"github.com/SolracHQ/stex/internal/app"
+	"github.com/SolracHQ/stex/internal/config"
+
 	flag "github.com/spf13/pflag"
 
 	tea "charm.land/bubbletea/v2"
@@ -38,11 +43,20 @@ func main() {
 		os.Exit(1)
 	}
 
-	program := tea.NewProgram(tui.New(path, tui.Flags{
-		Icons:      *icons,
-		ShowAll:    *showAll,
-		LiveFilter: !*noLive,
-	}))
+	cfg := config.DefaultConfig()
+	if *icons {
+		cfg.ShowIcons = true
+	}
+	if *showAll {
+		cfg.ShowHidden = true
+	}
+	if *noLive {
+		cfg.LiveFilter = false
+	} else {
+		cfg.LiveFilter = true
+	}
+
+	program := tea.NewProgram(app.New(path, cfg))
 	if _, err := program.Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
