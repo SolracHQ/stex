@@ -14,6 +14,7 @@ type keys struct {
 	Sort, Group, Order    key.Binding
 	Icons, Hidden         key.Binding
 	Search, ClearFilter   key.Binding
+	Command               key.Binding
 }
 
 // explorerKeys is the singleton key map used by the explorer. The list is split into four rows
@@ -65,6 +66,10 @@ var explorerKeys = keys{
 		key.WithKeys("c"),
 		key.WithHelp("c", "clear filter"),
 	),
+	Command: key.NewBinding(
+		key.WithKeys(":"),
+		key.WithHelp(":", "command"),
+	),
 }
 
 // ShortHelp returns the bindings shown in the collapsed footer.
@@ -77,7 +82,7 @@ func (k keys) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
 		{k.Up, k.Down, k.Enter, k.Back},
 		{k.Sort, k.Group, k.Order, k.Icons},
-		{k.Hidden, k.Search, k.ClearFilter},
+		{k.Hidden, k.Search, k.ClearFilter, k.Command},
 		{k.Help, k.Quit},
 	}
 }

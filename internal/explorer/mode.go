@@ -6,6 +6,7 @@ package explorer
 import (
 	"charm.land/bubbles/v2/help"
 	"charm.land/bubbles/v2/key"
+	"github.com/SolracHQ/stex/internal/command"
 	"github.com/SolracHQ/stex/internal/config"
 	"github.com/SolracHQ/stex/internal/core"
 	"github.com/SolracHQ/stex/internal/filter"
@@ -79,6 +80,9 @@ func (Explorer) Update(ctx *core.Context, msg tea.Msg) (core.Mode, tea.Cmd) {
 
 		case key.Matches(msg, explorerKeys.Search):
 			return filter.New(Explorer{}), nil
+
+		case key.Matches(msg, explorerKeys.Command):
+			return command.New(Explorer{}), nil
 
 		case key.Matches(msg, explorerKeys.ClearFilter):
 			if ctx.Config.Filter != nil {
