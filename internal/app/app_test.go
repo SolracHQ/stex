@@ -7,6 +7,7 @@ import (
 	"github.com/SolracHQ/stex/internal/config"
 	"github.com/SolracHQ/stex/internal/core"
 	"github.com/SolracHQ/stex/internal/scanning"
+	"github.com/SolracHQ/stex/internal/testutil"
 
 	tea "charm.land/bubbletea/v2"
 )
@@ -39,7 +40,7 @@ func TestAppTableFocusedAtStart(t *testing.T) {
 func TestAppHandlesResizeBeforeInit(t *testing.T) {
 	a := &App{
 		ctx:  &core.Context{Width: 80, Height: 24, Keys: core.DefaultKeys()},
-		mode: fakeNext{},
+		mode: testutil.StubMode{},
 	}
 	_, _ = a.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
 	if a.ctx.Width != 120 || a.ctx.Height != 40 {
@@ -59,30 +60,18 @@ func (f *fakeMode) Update(_ *core.Context, _ tea.Msg) (core.Mode, tea.Cmd) {
 	return f.next, nil
 }
 
-func (f *fakeMode) View(_ *core.Context) string { return "" }
+func (f *fakeMode) Overlay(_ *core.Context) string { return "" }
 
 func (f *fakeMode) Help() help.KeyMap { return nil }
-
-type fakeNext struct{}
-
-func (fakeNext) Init(_ *core.Context) tea.Cmd { return nil }
-
-func (fakeNext) Update(_ *core.Context, _ tea.Msg) (core.Mode, tea.Cmd) {
-	return nil, nil
-}
-
-func (fakeNext) View(_ *core.Context) string { return "" }
-
-func (fakeNext) Help() help.KeyMap { return nil }
 
 func TestAppSwapsModeWhenReturned(t *testing.T) {
 	a := &App{
 		ctx:  &core.Context{Width: 80, Height: 24, Keys: core.DefaultKeys()},
-		mode: &fakeMode{next: fakeNext{}},
+		mode: &fakeMode{next: testutil.StubMode{}},
 	}
 	_, _ = a.Update(nil)
-	if _, ok := a.mode.(fakeNext); !ok {
-		t.Fatalf("expected mode swap to fakeNext, got %T", a.mode)
+	if _, ok := a.mode.(testutil.StubMode); !ok {
+		t.Fatalf("expected mode swap to testutil.StubMode, got %T", a.mode)
 	}
 }
 

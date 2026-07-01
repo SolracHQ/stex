@@ -28,7 +28,7 @@ func enterSelected(ctx *core.Context) {
 	default:
 		return
 	}
-	Rebuild(ctx)
+	core.Rebuild(ctx)
 	restoreCursorByUID(ctx)
 }
 
@@ -45,7 +45,7 @@ func goToParent(ctx *core.Context) {
 		ctx.Current.SetLastSelectedUID(ctx.Items[idx].UID())
 	}
 	ctx.Current = ctx.Current.ParentDir()
-	Rebuild(ctx)
+	core.Rebuild(ctx)
 	restoreCursorByUID(ctx)
 }
 

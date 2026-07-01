@@ -6,10 +6,12 @@ package explorer
 import (
 	"charm.land/bubbles/v2/help"
 	"charm.land/bubbles/v2/key"
+	"github.com/SolracHQ/stex/internal/choose"
 	"github.com/SolracHQ/stex/internal/command"
 	"github.com/SolracHQ/stex/internal/config"
 	"github.com/SolracHQ/stex/internal/core"
 	"github.com/SolracHQ/stex/internal/filter"
+	"github.com/SolracHQ/stex/internal/settings"
 
 	tea "charm.land/bubbletea/v2"
 )
@@ -29,7 +31,7 @@ type Explorer struct{}
 // Init resizes the table to the current terminal dimensions, recomputes the item list, and
 // rebuilds the table rows.
 func (Explorer) Init(ctx *core.Context) tea.Cmd {
-	Rebuild(ctx)
+	core.Rebuild(ctx)
 	return nil
 }
 
@@ -38,45 +40,32 @@ func (Explorer) Init(ctx *core.Context) tea.Cmd {
 func (Explorer) Update(ctx *core.Context, msg tea.Msg) (core.Mode, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		Rebuild(ctx)
+		core.Rebuild(ctx)
 		return nil, nil
 
 	case tea.KeyPressMsg:
-		var cmd tea.Cmd
-		ctx.Table, cmd = ctx.Table.Update(msg)
-		updateInfo(ctx)
-
 		switch {
 		case key.Matches(msg, ctx.Keys.Help):
 			ctx.Help.ShowAll = !ctx.Help.ShowAll
 
+		case key.Matches(msg, explorerKeys.Up):
+			ctx.Table.MoveUp(1)
+			core.UpdateInfo(ctx)
+
+		case key.Matches(msg, explorerKeys.Down):
+			ctx.Table.MoveDown(1)
+			core.UpdateInfo(ctx)
+
 		case key.Matches(msg, explorerKeys.Enter):
 			enterSelected(ctx)
-			updateInfo(ctx)
+			core.UpdateInfo(ctx)
 
 		case key.Matches(msg, explorerKeys.Back):
 			goToParent(ctx)
-			updateInfo(ctx)
-
-		case key.Matches(msg, explorerKeys.Sort):
-			ctx.Config.SortBy.Toggle()
-			Rebuild(ctx)
+			core.UpdateInfo(ctx)
 
 		case key.Matches(msg, explorerKeys.Group):
-			ctx.Config.Grouping.Toggle()
-			Rebuild(ctx)
-
-		case key.Matches(msg, explorerKeys.Order):
-			ctx.Config.SortOrder.Toggle()
-			Rebuild(ctx)
-
-		case key.Matches(msg, explorerKeys.Icons):
-			ctx.Config.ShowIcons = !ctx.Config.ShowIcons
-			buildRows(ctx, ctx.Items)
-
-		case key.Matches(msg, explorerKeys.Hidden):
-			ctx.Config.ShowHidden = !ctx.Config.ShowHidden
-			Rebuild(ctx)
+			return choose.NewGroupPicker(ctx.Config.Grouping, Explorer{}), nil
 
 		case key.Matches(msg, explorerKeys.Search):
 			return filter.New(Explorer{}), nil
@@ -84,13 +73,16 @@ func (Explorer) Update(ctx *core.Context, msg tea.Msg) (core.Mode, tea.Cmd) {
 		case key.Matches(msg, explorerKeys.Command):
 			return command.New(Explorer{}), nil
 
+		case key.Matches(msg, explorerKeys.Settings):
+			return settings.New(Explorer{}), nil
+
 		case key.Matches(msg, explorerKeys.ClearFilter):
 			if ctx.Config.Filter != nil {
 				ctx.Config.Filter = nil
-				Rebuild(ctx)
+				core.Rebuild(ctx)
 			}
 		}
-		return nil, cmd
+		return nil, nil
 
 	case tea.MouseClickMsg:
 		handleMouseClick(ctx, msg)
@@ -107,7 +99,7 @@ func (Explorer) Update(ctx *core.Context, msg tea.Msg) (core.Mode, tea.Cmd) {
 // View returns "". The base view is drawn by core.RenderBase. The explorer itself does not
 // draw any overlay, the base renderer handles layout and any active sub mode draws its own
 // overlay on top.
-func (Explorer) View(_ *core.Context) string { return "" }
+func (Explorer) Overlay(_ *core.Context) string { return "" }
 
 // Help returns the explorer's key bindings for the help footer.
 func (Explorer) Help() help.KeyMap {
@@ -144,7 +136,7 @@ func handleMouseClick(ctx *core.Context, msg tea.MouseClickMsg) {
 	}
 	ctx.Table.SetCursor(rowIndex)
 	enterSelected(ctx)
-	updateInfo(ctx)
+	core.UpdateInfo(ctx)
 }
 
 // handleHeaderClick sorts by the clicked column header. Clicking the active column toggles
@@ -164,14 +156,14 @@ func handleHeaderClick(ctx *core.Context, clickX int) {
 					ctx.Config.SortBy = config.SortByName
 				}
 			}
-			Rebuild(ctx)
+			core.Rebuild(ctx)
 			return
 		}
 		x += col.Width
 	}
 }
 
-// handleMouseWheel scrolls the table by three lines in the wheel direction. updateInfo is
+// handleMouseWheel scrolls the table by three lines in the wheel direction. core.UpdateInfo is
 // called so the right pane follows the new selection.
 func handleMouseWheel(ctx *core.Context, msg tea.MouseWheelMsg) {
 	if msg.Button == tea.MouseWheelUp {
@@ -179,5 +171,5 @@ func handleMouseWheel(ctx *core.Context, msg tea.MouseWheelMsg) {
 	} else {
 		ctx.Table.MoveDown(scrollLines)
 	}
-	updateInfo(ctx)
+	core.UpdateInfo(ctx)
 }

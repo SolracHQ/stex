@@ -9,6 +9,7 @@ import (
 
 	"github.com/SolracHQ/stex/internal/config"
 	"github.com/SolracHQ/stex/internal/core"
+	"github.com/SolracHQ/stex/internal/styles"
 	stexmodel "github.com/SolracHQ/stex/internal/model"
 
 	"charm.land/bubbles/v2/key"
@@ -46,7 +47,7 @@ func buildTestTree(t *testing.T) *stexmodel.Dir {
 func newCtx(t *testing.T) *core.Context {
 	t.Helper()
 	root := buildTestTree(t)
-	tbl := table.New(table.WithFocused(true), table.WithStyles(core.TableStyles()))
+	tbl := table.New(table.WithFocused(true), table.WithStyles(styles.TableDefault()))
 	ctx := &core.Context{
 		Width:   120,
 		Height:  30,
@@ -56,7 +57,7 @@ func newCtx(t *testing.T) *core.Context {
 		Table:   tbl,
 		Keys:    core.DefaultKeys(),
 	}
-	Rebuild(ctx)
+	core.Rebuild(ctx)
 	return ctx
 }
 
@@ -97,43 +98,12 @@ func TestExplorerHelpToggleChangesShowAll(t *testing.T) {
 	}
 }
 
-func TestExplorerSortTogglesSortBy(t *testing.T) {
+func TestExplorerGroupOpensPicker(t *testing.T) {
 	ctx := newCtx(t)
 	e := Explorer{}
-	prev := ctx.Config.SortBy
-	_, _ = e.Update(ctx, runeKey('s'))
-	if ctx.Config.SortBy == prev {
-		t.Fatal("expected sort toggle to flip SortBy")
-	}
-}
-
-func TestExplorerGroupTogglesGrouping(t *testing.T) {
-	ctx := newCtx(t)
-	e := Explorer{}
-	prev := ctx.Config.Grouping
-	_, _ = e.Update(ctx, runeKey('g'))
-	if ctx.Config.Grouping == prev {
-		t.Fatal("expected group toggle to flip Grouping")
-	}
-}
-
-func TestExplorerOrderTogglesOrder(t *testing.T) {
-	ctx := newCtx(t)
-	e := Explorer{}
-	prev := ctx.Config.SortOrder
-	_, _ = e.Update(ctx, runeKey('o'))
-	if ctx.Config.SortOrder == prev {
-		t.Fatal("expected order toggle to flip SortOrder")
-	}
-}
-
-func TestExplorerHiddenToggleRebuilds(t *testing.T) {
-	ctx := newCtx(t)
-	e := Explorer{}
-	prev := ctx.Config.ShowHidden
-	_, _ = e.Update(ctx, runeKey('H'))
-	if ctx.Config.ShowHidden == prev {
-		t.Fatal("expected hidden toggle")
+	next, _ := e.Update(ctx, runeKey('g'))
+	if next == nil {
+		t.Fatal("expected grouping picker on g, got nil")
 	}
 }
 
@@ -155,7 +125,7 @@ func TestExplorerClearFilterResetsItems(t *testing.T) {
 	e := Explorer{}
 	re := regexp.MustCompile("a")
 	ctx.Config.Filter = re
-	Rebuild(ctx)
+	core.Rebuild(ctx)
 	_, _ = e.Update(ctx, runeKey('c'))
 	if ctx.Config.Filter != nil {
 		t.Fatal("expected filter to be cleared")
@@ -213,26 +183,26 @@ func TestExplorerGoToParent(t *testing.T) {
 func TestExplorerUpdateInfoPopulatesOnFirstCall(t *testing.T) {
 	ctx := newCtx(t)
 	ctx.Info.Path = ""
-	updateInfo(ctx)
+	core.UpdateInfo(ctx)
 	if ctx.Info.Path == "" {
-		t.Fatal("expected Info.Path to be set after updateInfo")
+		t.Fatal("expected Info.Path to be set after UpdateInfo")
 	}
 }
 
 func TestExplorerUpdateInfoSkipsWhenPathUnchanged(t *testing.T) {
 	ctx := newCtx(t)
-	updateInfo(ctx)
+	core.UpdateInfo(ctx)
 	first := ctx.Info.Content
-	updateInfo(ctx)
+	core.UpdateInfo(ctx)
 	if ctx.Info.Content != first {
 		t.Fatal("expected Info.Content to be cached when cursor hasn't moved")
 	}
 }
 
-func TestExplorerViewReturnsEmpty(t *testing.T) {
+func TestExplorerOverlayReturnsEmpty(t *testing.T) {
 	ctx := newCtx(t)
 	e := Explorer{}
-	if v := e.View(ctx); v != "" {
+	if v := e.Overlay(ctx); v != "" {
 		t.Fatalf("expected empty view, got %q", v)
 	}
 }

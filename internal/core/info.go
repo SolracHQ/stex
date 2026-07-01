@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/SolracHQ/stex/internal/config"
 	"github.com/SolracHQ/stex/internal/model"
 )
 
@@ -179,4 +180,71 @@ func padLines(lines []string, width, height int) string {
 // headers in the info pane.
 func bold(text string) string {
 	return "\033[1m" + text + "\033[22m"
+}
+
+// Info pane layout constants.
+const (
+	InfoPanelWidth  = 80
+	InfoPanelHeight = 10
+	MaxTopChildren  = 10
+)
+
+// UpdateInfo refreshes the cached right pane content for the current cursor position. Returns
+// immediately when the selection has not changed, so wheel scrolling stays cheap.
+func UpdateInfo(ctx *Context) {
+	if ctx.Current == nil {
+		return
+	}
+	idx := ctx.Table.Cursor()
+	if idx < 0 || idx >= len(ctx.Items) {
+		return
+	}
+	item := ctx.Items[idx]
+	path := item.FullPath()
+	if path == ctx.Info.Path {
+		return
+	}
+	ctx.Info.Path = path
+
+	if _, ok := item.(*model.UpLink); ok {
+		ctx.Info.Content = ""
+		return
+	}
+
+	info := NewFileInfo(path)
+	if dir, ok := item.(*model.Dir); ok {
+		children := TopChildren(dir, MaxTopChildren)
+		ctx.Info.Content = RenderDirInfo(info, dir.Size(), children, InfoPanelWidth, InfoPanelHeight)
+	} else {
+		ctx.Info.Content = RenderFileInfo(info, InfoPanelWidth, InfoPanelHeight)
+	}
+}
+
+// TopChildren returns the n largest direct children of dir, sorted by size descending, with
+// the sum of their sizes. Used to populate the "Largest Children" segment of the directory
+// info pane.
+func TopChildren(dir *model.Dir, n int) *ChildrenInfo {
+	if dir == nil || n <= 0 {
+		return nil
+	}
+	cfg := config.Config{
+		SortBy:    config.SortBySize,
+		SortOrder: config.Descending,
+		Grouping:  config.Mixed,
+	}
+	items := dir.ComputeItems(cfg)
+	filtered := make([]model.FileSystemItem, 0, len(items))
+	for _, item := range items {
+		if _, ok := item.(*model.UpLink); !ok {
+			filtered = append(filtered, item)
+		}
+	}
+	if len(filtered) > n {
+		filtered = filtered[:n]
+	}
+	var total model.Size
+	for _, item := range filtered {
+		total += item.Size()
+	}
+	return &ChildrenInfo{Items: filtered, TotalSize: total}
 }

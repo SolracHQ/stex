@@ -55,6 +55,7 @@ func (f *Filter) Update(ctx *core.Context, msg tea.Msg) (core.Mode, tea.Cmd) {
 			} else {
 				ctx.Config.Filter = nil
 			}
+			core.Rebuild(ctx)
 			return nil, nil
 		}
 	}
@@ -62,13 +63,10 @@ func (f *Filter) Update(ctx *core.Context, msg tea.Msg) (core.Mode, tea.Cmd) {
 	f.input, cmd = f.input.Update(msg)
 	if ctx.Config.LiveFilter {
 		commit(ctx, f.input.Value())
+		core.Rebuild(ctx)
+		return nil, cmd
 	}
 	return nil, cmd
-}
-
-// View returns the filter overlay rendered at the current context dimensions.
-func (f *Filter) View(ctx *core.Context) string {
-	return Overlay(ctx, f.input)
 }
 
 // Help returns the filter key bindings for the help footer.

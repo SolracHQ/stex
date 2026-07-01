@@ -1,29 +1,20 @@
 package command
 
 import (
-	"charm.land/bubbles/v2/textinput"
-	"charm.land/lipgloss/v2"
 	"github.com/SolracHQ/stex/internal/core"
+	"github.com/SolracHQ/stex/internal/styles"
 )
 
-const (
-	overlayMaxWidth = 60
-	overlayPadX     = 8
-)
+const overlayPadX = 8
 
-func Overlay(ctx *core.Context, input textinput.Model) string {
-	width := max(1, min(overlayMaxWidth, ctx.Width-4))
-	input.SetWidth(width - overlayPadX)
+func (c *Command) Overlay(ctx *core.Context) string {
+	width := max(1, min(60, ctx.Width-4))
+	c.input.SetWidth(width - overlayPadX)
 
-	style := input.Styles()
-	style.Focused.Text = lipgloss.NewStyle().Foreground(lipgloss.Color("11"))
-	style.Focused.Prompt = lipgloss.NewStyle().Foreground(lipgloss.Color("11"))
-	input.SetStyles(style)
+	s := c.input.Styles()
+	s.Focused.Text = styles.Accent
+	s.Focused.Prompt = styles.Accent
+	c.input.SetStyles(s)
 
-	return lipgloss.NewStyle().
-		Border(lipgloss.DoubleBorder()).
-		BorderForeground(lipgloss.Color("11")).
-		Padding(0, 2).
-		Width(width).
-		Render(input.View())
+	return styles.DialogBorder.Width(width).Render(c.input.View())
 }

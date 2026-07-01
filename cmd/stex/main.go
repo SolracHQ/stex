@@ -1,9 +1,7 @@
-// stex is an interactive TUI to explore where disk space is being used. The program is a
-// single binary that takes a path argument (defaults to the current directory) and starts a
-// Bubble Tea program.
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
@@ -44,6 +42,15 @@ func main() {
 	}
 
 	cfg := config.DefaultConfig()
+	if configPath, err := config.DefaultPath(); err == nil {
+		if loaded, err := config.Load(configPath); err != nil {
+			if !errors.Is(err, config.ErrNotFound) {
+				fmt.Fprintf(os.Stderr, "warning: %s\n", err)
+			}
+		} else {
+			cfg = loaded
+		}
+	}
 	if *icons {
 		cfg.ShowIcons = true
 	}
@@ -52,8 +59,6 @@ func main() {
 	}
 	if *noLive {
 		cfg.LiveFilter = false
-	} else {
-		cfg.LiveFilter = true
 	}
 
 	program := tea.NewProgram(app.New(path, cfg))

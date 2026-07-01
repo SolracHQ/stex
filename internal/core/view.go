@@ -4,9 +4,11 @@ import (
 	"strings"
 
 	"charm.land/bubbles/v2/help"
+	"github.com/SolracHQ/stex/internal/styles"
+	"github.com/charmbracelet/x/ansi"
+
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
-	"github.com/charmbracelet/x/ansi"
 )
 
 // SplitViewThreshold is the minimum inner width at which the layout switches from a single
@@ -51,7 +53,7 @@ func splitView(ctx *Context, innerWidth, innerHeight int, keys help.KeyMap) stri
 	rightWidth := innerWidth - leftWidth - 1
 
 	titleLine := Title(ctx.Current, innerWidth, ctx.Config.ShowIcons, TitleGroup(ctx))
-	sepLine := DimStyle.Render(strings.Repeat("─", innerWidth))
+	sepLine := styles.Dim.Render(strings.Repeat("─", innerWidth))
 
 	footerStr, footerHeight := renderFooter(ctx, innerWidth, keys)
 	contentHeight := max(innerHeight-2-footerHeight, 0)
@@ -63,7 +65,7 @@ func splitView(ctx *Context, innerWidth, innerHeight int, keys help.KeyMap) stri
 		rightContent = renderPadded(ctx.Info.Content, contentHeight)
 	}
 
-	combined := splitPane(leftContent, rightContent, leftWidth, rightWidth, DimStyle.Render("│"))
+	combined := splitPane(leftContent, rightContent, leftWidth, rightWidth, styles.Dim.Render("│"))
 
 	return titleLine + "\n" + sepLine + "\n" + combined + "\n" + strings.Join(footerStr, "\n")
 }
@@ -76,7 +78,7 @@ func narrowView(ctx *Context, innerWidth, innerHeight int, keys help.KeyMap) str
 
 	lines := make([]string, innerHeight)
 	lines[0] = Title(ctx.Current, innerWidth, ctx.Config.ShowIcons, TitleGroup(ctx))
-	lines[1] = DimStyle.Render(strings.Repeat("─", innerWidth))
+	lines[1] = styles.Dim.Render(strings.Repeat("─", innerWidth))
 
 	fillTable(lines, contentHeight, ctx.Table.View())
 
@@ -138,7 +140,7 @@ func renderPadded(content string, height int) string {
 // resulting tea.View. The alternate screen is enabled and cell motion mouse is turned on, so
 // the app captures the mouse for click and wheel handling.
 func WrapView(content string) tea.View {
-	view := tea.NewView(BorderStyle.Render(content))
+	view := tea.NewView(styles.BorderNorm.Render(content))
 	view.AltScreen = true
 	view.MouseMode = tea.MouseModeCellMotion
 	return view

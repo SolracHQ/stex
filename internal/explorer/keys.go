@@ -11,10 +11,9 @@ type keys struct {
 	core.Keys
 
 	Up, Down, Enter, Back key.Binding
-	Sort, Group, Order    key.Binding
-	Icons, Hidden         key.Binding
+	Group                 key.Binding
 	Search, ClearFilter   key.Binding
-	Command               key.Binding
+	Command, Settings     key.Binding
 }
 
 // explorerKeys is the singleton key map used by the explorer. The list is split into four rows
@@ -23,40 +22,24 @@ var explorerKeys = keys{
 	Keys: core.DefaultKeys(),
 
 	Up: key.NewBinding(
-		key.WithKeys("up", "k"),
-		key.WithHelp("↑/k", "move up"),
+		key.WithKeys("up", "k", "w"),
+		key.WithHelp("↑/k/w", "move up"),
 	),
 	Down: key.NewBinding(
-		key.WithKeys("down", "j"),
-		key.WithHelp("↓/j", "move down"),
+		key.WithKeys("down", "j", "s"),
+		key.WithHelp("↓/j/s", "move down"),
 	),
 	Enter: key.NewBinding(
-		key.WithKeys("enter", "l", "right"),
-		key.WithHelp("enter/l/→", "open directory"),
+		key.WithKeys("enter", "l", "right", "d"),
+		key.WithHelp("→/l/d", "move in"),
 	),
 	Back: key.NewBinding(
-		key.WithKeys("esc", "backspace", "left"),
-		key.WithHelp("esc/←", "go up"),
-	),
-	Sort: key.NewBinding(
-		key.WithKeys("s"),
-		key.WithHelp("s", "sort by name/size"),
+		key.WithKeys("esc", "backspace", "left", "h", "a"),
+		key.WithHelp("←/h/a", "move out"),
 	),
 	Group: key.NewBinding(
 		key.WithKeys("g"),
-		key.WithHelp("g", "grouping mode"),
-	),
-	Order: key.NewBinding(
-		key.WithKeys("o"),
-		key.WithHelp("o", "ascending/descending"),
-	),
-	Icons: key.NewBinding(
-		key.WithKeys("i"),
-		key.WithHelp("i", "toggle icons"),
-	),
-	Hidden: key.NewBinding(
-		key.WithKeys("H"),
-		key.WithHelp("H", "toggle hidden files"),
+		key.WithHelp("g", "grouping"),
 	),
 	Search: key.NewBinding(
 		key.WithKeys("/"),
@@ -70,6 +53,10 @@ var explorerKeys = keys{
 		key.WithKeys(":"),
 		key.WithHelp(":", "command"),
 	),
+	Settings: key.NewBinding(
+		key.WithKeys("S"),
+		key.WithHelp("S", "settings"),
+	),
 }
 
 // ShortHelp returns the bindings shown in the collapsed footer.
@@ -81,8 +68,8 @@ func (k keys) ShortHelp() []key.Binding {
 func (k keys) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
 		{k.Up, k.Down, k.Enter, k.Back},
-		{k.Sort, k.Group, k.Order, k.Icons},
-		{k.Hidden, k.Search, k.ClearFilter, k.Command},
+		{k.Group, k.Settings},
+		{k.Search, k.ClearFilter, k.Command},
 		{k.Help, k.Quit},
 	}
 }

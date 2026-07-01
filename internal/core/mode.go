@@ -19,6 +19,6 @@ import (
 type Mode interface {
 	Init(ctx *Context) tea.Cmd
 	Update(ctx *Context, msg tea.Msg) (Mode, tea.Cmd)
-	View(ctx *Context) string
+	Overlay(ctx *Context) string
 	Help() help.KeyMap
 }

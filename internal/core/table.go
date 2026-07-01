@@ -1,28 +1,24 @@
-package explorer
+package core
 
 import (
 	"fmt"
 	"math"
 
 	"github.com/SolracHQ/stex/internal/config"
-	"github.com/SolracHQ/stex/internal/core"
 	stexmodel "github.com/SolracHQ/stex/internal/model"
 
 	"charm.land/bubbles/v2/table"
 )
 
-// Column widths. The name column is widened to fit the terminal so long filenames do not get
-// truncated prematurely.
+// Column widths used when building the table columns.
 const (
 	defaultNameWidth = 40
 	sizePctWidth     = 9
 	sizeWidth        = 12
 )
 
-// buildColumns writes the three table columns, with up or down arrows on the active sort
-// column. The name column is widened to fit the terminal so long filenames do not get
-// truncated.
-func buildColumns(ctx *core.Context) {
+// buildColumns sets the table column headers and widths based on the sort direction.
+func buildColumns(ctx *Context) {
 	cols := ctx.Table.Columns()
 	nameWidth := defaultNameWidth
 	if len(cols) > 2 && cols[2].Width > 0 {
@@ -59,9 +55,8 @@ func buildColumns(ctx *core.Context) {
 	})
 }
 
-// buildRows turns ctx.Items into table rows, with the gradient color and optional emoji
-// applied per row.
-func buildRows(ctx *core.Context, items []stexmodel.FileSystemItem) {
+// buildRows transforms items into bubbletea table rows and sets them on the table.
+func buildRows(ctx *Context, items []stexmodel.FileSystemItem) {
 	rows := make([]table.Row, 0, len(items))
 	for _, item := range items {
 		rows = append(rows, itemToRow(item, ctx.Config.ShowIcons, ctx.Current))
@@ -69,8 +64,7 @@ func buildRows(ctx *core.Context, items []stexmodel.FileSystemItem) {
 	ctx.Table.SetRows(rows)
 }
 
-// itemToRow converts a single FileSystemItem into a table row. Files and directories get the
-// gradient color and the size column, the up link is rendered as a static ".." placeholder.
+// itemToRow converts a single item to a table row.
 func itemToRow(item stexmodel.FileSystemItem, showIcons bool, parent *stexmodel.Dir) table.Row {
 	switch item.(type) {
 	case *stexmodel.File, *stexmodel.Dir:
@@ -85,8 +79,7 @@ func itemToRow(item stexmodel.FileSystemItem, showIcons bool, parent *stexmodel.
 	return table.Row{}
 }
 
-// buildRow formats a single row with the gradient color and the optional emoji prefix on the
-// name.
+// buildRow formats a single data row for the table.
 func buildRow(name, emoji string, size, parentSize stexmodel.Size, showIcons bool) table.Row {
 	percent := size.PercentOf(parentSize)
 	gradientCode := gradientANSI(percent)
@@ -100,8 +93,8 @@ func buildRow(name, emoji string, size, parentSize stexmodel.Size, showIcons boo
 	}
 }
 
-// gradientANSI maps a 0 to 100 percentage to a green to red ANSI foreground color. Values
-// outside the range are clamped.
+// gradientANSI returns an ANSI escape sequence that sets the foreground to a yellow-to-red
+// color based on the ratio. 0% is green, 50% is yellow, 100% is red.
 func gradientANSI(percent float64) string {
 	if percent < 0 {
 		percent = 0

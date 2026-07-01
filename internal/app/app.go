@@ -16,13 +16,13 @@ import (
 	"github.com/SolracHQ/stex/internal/config"
 	"github.com/SolracHQ/stex/internal/core"
 	"github.com/SolracHQ/stex/internal/scanning"
+	"github.com/SolracHQ/stex/internal/styles"
 
-	"charm.land/bubbles/v2/help"
 	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/table"
-	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
+	tea "charm.land/bubbletea/v2"
 )
 
 // App is the top level Bubble Tea model. It owns the shared Context and the active Mode, and
@@ -36,17 +36,11 @@ type App struct {
 // starts in the scanning mode (async tree build) and transitions to the explorer when the scan
 // completes.
 func New(path string, cfg config.Config) tea.Model {
-	helpModel := help.New()
-	helpModel.Styles.FullKey = core.HelpKeyStyle
-	helpModel.Styles.FullDesc = core.HelpDescStyle
-	helpModel.Styles.FullSeparator = core.HelpSepStyle
-	helpModel.Styles.ShortKey = core.HelpKeyStyle
-	helpModel.Styles.ShortDesc = core.HelpDescStyle
-	helpModel.Styles.ShortSeparator = core.HelpSepStyle
+	helpModel := styles.HelpDefaults()
 
 	tableView := table.New(
 		table.WithFocused(true),
-		table.WithStyles(core.TableStyles()),
+		table.WithStyles(styles.TableDefault()),
 	)
 
 	return &App{
@@ -115,7 +109,7 @@ func (a *App) View() tea.View {
 	} else {
 		body = core.Blank(a.ctx.Width, a.ctx.Height)
 	}
-	if overlay := a.mode.View(a.ctx); overlay != "" {
+	if overlay := a.mode.Overlay(a.ctx); overlay != "" {
 		body = overlayCenter(body, overlay)
 	}
 	if a.ctx.Ready {

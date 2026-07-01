@@ -65,7 +65,7 @@ func (l *Loading) Update(ctx *core.Context, msg tea.Msg) (core.Mode, tea.Cmd) {
 
 // View returns the progress dialog rendered at the context's dimensions. Returns "" when
 // dimensions are not yet known, so the program does not flash an empty box on the first frame.
-func (l *Loading) View(ctx *core.Context) string {
+func (l *Loading) Overlay(ctx *core.Context) string {
 	if ctx.Width == 0 || ctx.Height == 0 {
 		return ""
 	}

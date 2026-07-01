@@ -27,6 +27,12 @@ var commands = map[string]cmdDef{
 			return nil, tea.Quit
 		},
 	},
+	"save": {
+		run: func(ctx *core.Context, arg string, returnTo core.Mode) (core.Mode, tea.Cmd) {
+			_ = ctx.Config.Save()
+			return returnTo, nil
+		},
+	},
 	"sort": {
 		args: []string{"ascending", "descending"},
 		run: func(ctx *core.Context, arg string, returnTo core.Mode) (core.Mode, tea.Cmd) {
@@ -95,7 +101,7 @@ var commands = map[string]cmdDef{
 
 // commandVerbs is the canonical verb list shown when no argument has been typed yet. Short
 // forms like q are handled by the parser but never appear in suggestions.
-var commandVerbs = []string{"quit", "sort", "sortby", "group", "toggle"}
+var commandVerbs = []string{"quit", "save", "sort", "sortby", "group", "toggle"}
 
 // Command is the command line mode. It owns a textinput widget with tab completion and a return
 // target that the mode transitions back to on complete or cancel.
@@ -140,9 +146,9 @@ func (c *Command) Update(ctx *core.Context, msg tea.Msg) (core.Mode, tea.Cmd) {
 			return c.returnTo, nil
 		}
 
-		space := strings.IndexByte(preValue, ' ')
+		found := strings.Contains(preValue, " ")
 		afterSpace := strings.IndexByte(c.input.Value(), ' ')
-		if (space == -1 && afterSpace != -1) || (space != -1 && afterSpace == -1) {
+		if (!found && afterSpace != -1) || (found && afterSpace == -1) {
 			needRefresh = true
 		}
 	}
@@ -164,13 +170,13 @@ func (c *Command) Update(ctx *core.Context, msg tea.Msg) (core.Mode, tea.Cmd) {
 // refreshSuggestions sets the suggestion pool based on whether the current value has a space
 // (verb plus arguments) or not (verb only).
 func (c *Command) refreshSuggestions(value string) {
-	space := strings.IndexByte(value, ' ')
-	if space == -1 {
+	before, _, ok := strings.Cut(value, " ")
+	if !ok {
 		c.input.SetSuggestions(commandVerbs)
 		return
 	}
 
-	verb := value[:space]
+	verb := before
 	def, exists := commands[verb]
 	if !exists || len(def.args) == 0 {
 		c.input.SetSuggestions(nil)
@@ -182,11 +188,6 @@ func (c *Command) refreshSuggestions(value string) {
 		full[i] = verb + " " + arg
 	}
 	c.input.SetSuggestions(full)
-}
-
-// View returns the command overlay rendered at the current context dimensions.
-func (c *Command) View(ctx *core.Context) string {
-	return Overlay(ctx, c.input)
 }
 
 // Help returns the command key bindings for the help footer.
@@ -203,11 +204,6 @@ func runCommand(ctx *core.Context, value string, returnTo core.Mode) (core.Mode,
 	verb, arg := parts[0], ""
 	if len(parts) > 1 {
 		arg = parts[1]
-	}
-
-	switch verb {
-	case "q":
-		verb = "quit"
 	}
 
 	def, exists := commands[verb]

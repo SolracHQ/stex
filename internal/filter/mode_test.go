@@ -9,8 +9,9 @@ import (
 	"github.com/SolracHQ/stex/internal/config"
 	"github.com/SolracHQ/stex/internal/core"
 	stexmodel "github.com/SolracHQ/stex/internal/model"
+	"github.com/SolracHQ/stex/internal/testutil"
+	"github.com/SolracHQ/stex/internal/styles"
 
-	"charm.land/bubbles/v2/help"
 	"charm.land/bubbles/v2/table"
 	tea "charm.land/bubbletea/v2"
 )
@@ -33,7 +34,7 @@ func buildTestTree(t *testing.T) *stexmodel.Dir {
 func newCtx(t *testing.T) *core.Context {
 	t.Helper()
 	root := buildTestTree(t)
-	tbl := table.New(table.WithFocused(true), table.WithStyles(core.TableStyles()))
+	tbl := table.New(table.WithFocused(true), table.WithStyles(styles.TableDefault()))
 	cfg := config.DefaultConfig()
 	cfg.LiveFilter = true
 	return &core.Context{
@@ -47,21 +48,7 @@ func newCtx(t *testing.T) *core.Context {
 	}
 }
 
-// sentinelMode is a no op mode used as a return target in tests, the filter is expected to
-// hand it back on confirm and cancel.
-type sentinelMode struct{}
-
-func (sentinelMode) Init(_ *core.Context) tea.Cmd { return nil }
-
-func (sentinelMode) Update(_ *core.Context, _ tea.Msg) (core.Mode, tea.Cmd) {
-	return nil, nil
-}
-
-func (sentinelMode) View(_ *core.Context) string { return "" }
-
-func (sentinelMode) Help() help.KeyMap { return nil }
-
-var sentinel core.Mode = sentinelMode{}
+var sentinel core.Mode = testutil.StubMode{}
 
 func runeKey(r rune) tea.KeyPressMsg {
 	return tea.KeyPressMsg(tea.Key{Code: r, Text: string(r)})
@@ -166,7 +153,7 @@ func TestFilterViewReturnsNonEmpty(t *testing.T) {
 	ctx.Config.LiveFilter = true
 	f := New(sentinel)
 	_ = f.Init(ctx)
-	v := f.View(ctx)
+	v := f.Overlay(ctx)
 	if v == "" {
 		t.Fatal("expected non-empty view")
 	}

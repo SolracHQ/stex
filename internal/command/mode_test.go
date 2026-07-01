@@ -5,21 +5,15 @@ import (
 
 	"github.com/SolracHQ/stex/internal/config"
 	"github.com/SolracHQ/stex/internal/core"
+	"github.com/SolracHQ/stex/internal/testutil"
+	"github.com/SolracHQ/stex/internal/styles"
 
-	"charm.land/bubbles/v2/help"
 	"charm.land/bubbles/v2/table"
 	tea "charm.land/bubbletea/v2"
 )
 
-type returnStub struct{}
-
-func (returnStub) Init(_ *core.Context) tea.Cmd                           { return nil }
-func (returnStub) Update(_ *core.Context, _ tea.Msg) (core.Mode, tea.Cmd) { return nil, nil }
-func (returnStub) View(_ *core.Context) string                            { return "" }
-func (returnStub) Help() help.KeyMap                                      { return nil }
-
 func newCtx() *core.Context {
-	tbl := table.New(table.WithFocused(true), table.WithStyles(core.TableStyles()))
+	tbl := table.New(table.WithFocused(true), table.WithStyles(styles.TableDefault()))
 	return &core.Context{
 		Width:  120,
 		Height: 30,
@@ -34,27 +28,27 @@ func specialKey(code rune) tea.KeyPressMsg {
 }
 
 func TestCommandNew(t *testing.T) {
-	c := New(returnStub{})
+	c := New(testutil.StubMode{})
 	if c == nil {
 		t.Fatal("expected non-nil command")
 	}
 }
 
 func TestCommandCancelReturnsToTarget(t *testing.T) {
-	c := New(returnStub{})
+	c := New(testutil.StubMode{})
 	ctx := newCtx()
 	_ = c.Init(ctx)
 	next, cmd := c.Update(ctx, specialKey(tea.KeyEscape))
 	if cmd != nil {
 		t.Fatal("expected nil cmd on cancel")
 	}
-	if _, ok := next.(returnStub); !ok {
-		t.Fatalf("expected returnStub on cancel, got %T", next)
+	if _, ok := next.(testutil.StubMode); !ok {
+		t.Fatalf("expected testutil.StubMode on cancel, got %T", next)
 	}
 }
 
 func TestCommandEmptyLineReturnsToTarget(t *testing.T) {
-	c := New(returnStub{})
+	c := New(testutil.StubMode{})
 	ctx := newCtx()
 	_ = c.Init(ctx)
 	c.input.SetValue("")
@@ -62,13 +56,13 @@ func TestCommandEmptyLineReturnsToTarget(t *testing.T) {
 	if cmd != nil {
 		t.Fatal("expected nil cmd on empty line")
 	}
-	if _, ok := next.(returnStub); !ok {
-		t.Fatalf("expected returnStub on empty line, got %T", next)
+	if _, ok := next.(testutil.StubMode); !ok {
+		t.Fatalf("expected testutil.StubMode on empty line, got %T", next)
 	}
 }
 
 func TestCommandQuitTriggersQuit(t *testing.T) {
-	c := New(returnStub{})
+	c := New(testutil.StubMode{})
 	ctx := newCtx()
 	_ = c.Init(ctx)
 	c.input.SetValue("quit")
@@ -79,10 +73,10 @@ func TestCommandQuitTriggersQuit(t *testing.T) {
 }
 
 func TestCommandQAliasQuits(t *testing.T) {
-	c := New(returnStub{})
+	c := New(testutil.StubMode{})
 	ctx := newCtx()
 	_ = c.Init(ctx)
-	c.input.SetValue("q")
+	c.input, _ = c.input.Update(tea.KeyPressMsg(tea.Key{Code: 'q', Text: "q"}))
 	_, cmd := c.Update(ctx, specialKey(tea.KeyEnter))
 	if cmd == nil {
 		t.Fatal("expected quit cmd for :q")
@@ -90,7 +84,7 @@ func TestCommandQAliasQuits(t *testing.T) {
 }
 
 func TestCommandSortByName(t *testing.T) {
-	c := New(returnStub{})
+	c := New(testutil.StubMode{})
 	ctx := newCtx()
 	_ = c.Init(ctx)
 	c.input.SetValue("sortby name")
@@ -101,7 +95,7 @@ func TestCommandSortByName(t *testing.T) {
 }
 
 func TestCommandSortBySize(t *testing.T) {
-	c := New(returnStub{})
+	c := New(testutil.StubMode{})
 	ctx := newCtx()
 	_ = c.Init(ctx)
 	c.input.SetValue("sortby size")
@@ -112,7 +106,7 @@ func TestCommandSortBySize(t *testing.T) {
 }
 
 func TestCommandSortAscending(t *testing.T) {
-	c := New(returnStub{})
+	c := New(testutil.StubMode{})
 	ctx := newCtx()
 	_ = c.Init(ctx)
 	c.input.SetValue("sort ascending")
@@ -123,7 +117,7 @@ func TestCommandSortAscending(t *testing.T) {
 }
 
 func TestCommandSortDescending(t *testing.T) {
-	c := New(returnStub{})
+	c := New(testutil.StubMode{})
 	ctx := newCtx()
 	_ = c.Init(ctx)
 	c.input.SetValue("sort descending")
@@ -134,7 +128,7 @@ func TestCommandSortDescending(t *testing.T) {
 }
 
 func TestCommandSortAscAlias(t *testing.T) {
-	c := New(returnStub{})
+	c := New(testutil.StubMode{})
 	ctx := newCtx()
 	_ = c.Init(ctx)
 	c.input.SetValue("sort asc")
@@ -144,8 +138,22 @@ func TestCommandSortAscAlias(t *testing.T) {
 	}
 }
 
+func TestCommandSaveReturnsToTarget(t *testing.T) {
+	c := New(testutil.StubMode{})
+	ctx := newCtx()
+	_ = c.Init(ctx)
+	c.input.SetValue("save")
+	next, cmd := c.Update(ctx, specialKey(tea.KeyEnter))
+	if cmd != nil {
+		t.Fatal("expected nil cmd on save")
+	}
+	if _, ok := next.(testutil.StubMode); !ok {
+		t.Fatalf("expected returnStub on save, got %T", next)
+	}
+}
+
 func TestCommandSortDescAlias(t *testing.T) {
-	c := New(returnStub{})
+	c := New(testutil.StubMode{})
 	ctx := newCtx()
 	_ = c.Init(ctx)
 	c.input.SetValue("sort desc")
@@ -156,7 +164,7 @@ func TestCommandSortDescAlias(t *testing.T) {
 }
 
 func TestCommandGroupFilesFirst(t *testing.T) {
-	c := New(returnStub{})
+	c := New(testutil.StubMode{})
 	ctx := newCtx()
 	_ = c.Init(ctx)
 	c.input.SetValue("group files")
@@ -167,7 +175,7 @@ func TestCommandGroupFilesFirst(t *testing.T) {
 }
 
 func TestCommandGroupMixed(t *testing.T) {
-	c := New(returnStub{})
+	c := New(testutil.StubMode{})
 	ctx := newCtx()
 	_ = c.Init(ctx)
 	c.input.SetValue("group mixed")
@@ -178,7 +186,7 @@ func TestCommandGroupMixed(t *testing.T) {
 }
 
 func TestCommandToggleIcons(t *testing.T) {
-	c := New(returnStub{})
+	c := New(testutil.StubMode{})
 	ctx := newCtx()
 	_ = c.Init(ctx)
 	prev := ctx.Config.ShowIcons
@@ -190,7 +198,7 @@ func TestCommandToggleIcons(t *testing.T) {
 }
 
 func TestCommandToggleHidden(t *testing.T) {
-	c := New(returnStub{})
+	c := New(testutil.StubMode{})
 	ctx := newCtx()
 	_ = c.Init(ctx)
 	prev := ctx.Config.ShowHidden
@@ -202,7 +210,7 @@ func TestCommandToggleHidden(t *testing.T) {
 }
 
 func TestCommandToggleLive(t *testing.T) {
-	c := New(returnStub{})
+	c := New(testutil.StubMode{})
 	ctx := newCtx()
 	_ = c.Init(ctx)
 	ctx.Config.LiveFilter = false
@@ -214,7 +222,7 @@ func TestCommandToggleLive(t *testing.T) {
 }
 
 func TestCommandUnknownVerbReturnsToTarget(t *testing.T) {
-	c := New(returnStub{})
+	c := New(testutil.StubMode{})
 	ctx := newCtx()
 	_ = c.Init(ctx)
 	c.input.SetValue("nonexistent")
@@ -222,13 +230,13 @@ func TestCommandUnknownVerbReturnsToTarget(t *testing.T) {
 	if cmd != nil {
 		t.Fatal("expected nil cmd on unknown verb")
 	}
-	if _, ok := next.(returnStub); !ok {
-		t.Fatalf("expected returnStub on unknown verb, got %T", next)
+	if _, ok := next.(testutil.StubMode); !ok {
+		t.Fatalf("expected testutil.StubMode on unknown verb, got %T", next)
 	}
 }
 
 func TestCommandVerbWithoutArgReturnsToTarget(t *testing.T) {
-	c := New(returnStub{})
+	c := New(testutil.StubMode{})
 	ctx := newCtx()
 	_ = c.Init(ctx)
 	c.input.SetValue("sort")
@@ -236,23 +244,23 @@ func TestCommandVerbWithoutArgReturnsToTarget(t *testing.T) {
 	if cmd != nil {
 		t.Fatal("expected nil cmd on verb without arg")
 	}
-	if _, ok := next.(returnStub); !ok {
-		t.Fatalf("expected returnStub on verb without arg, got %T", next)
+	if _, ok := next.(testutil.StubMode); !ok {
+		t.Fatalf("expected testutil.StubMode on verb without arg, got %T", next)
 	}
 }
 
 func TestCommandViewNonEmpty(t *testing.T) {
-	c := New(returnStub{})
+	c := New(testutil.StubMode{})
 	ctx := newCtx()
 	_ = c.Init(ctx)
-	v := c.View(ctx)
+	v := c.Overlay(ctx)
 	if v == "" {
 		t.Fatal("expected non-empty view")
 	}
 }
 
 func TestCommandHelpReturnsBindings(t *testing.T) {
-	c := New(returnStub{})
+	c := New(testutil.StubMode{})
 	bindings := c.Help()
 	if bindings == nil {
 		t.Fatal("expected non-nil help")

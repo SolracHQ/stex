@@ -69,18 +69,18 @@ func TestLoadingTransitionsWhenDone(t *testing.T) {
 	}
 }
 
-func TestLoadingViewEmptyWhenNoDims(t *testing.T) {
+func TestLoadingOverlayEmptyWhenNoDims(t *testing.T) {
 	l := &Loading{state: &model.ScanState{}}
 	ctx := &core.Context{Width: 0, Height: 0}
-	if v := l.View(ctx); v != "" {
+	if v := l.Overlay(ctx); v != "" {
 		t.Fatalf("expected empty view, got %q", v)
 	}
 }
 
-func TestLoadingViewRendersOnDims(t *testing.T) {
+func TestLoadingOverlayRendersOnDims(t *testing.T) {
 	l := &Loading{state: &model.ScanState{}}
 	ctx := &core.Context{Width: 80, Height: 24}
-	v := l.View(ctx)
+	v := l.Overlay(ctx)
 	if v == "" {
 		t.Fatal("expected non-empty view")
 	}

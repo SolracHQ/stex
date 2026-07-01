@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/SolracHQ/stex/internal/core"
 	"github.com/SolracHQ/stex/internal/model"
+	"github.com/SolracHQ/stex/internal/styles"
 )
 
 // Layout constants for the progress dialog. progressOverhead is the number of lines the
@@ -27,7 +27,7 @@ func progressBox(state *model.ScanState, width, height int) string {
 	innerWidth := width - 2
 	innerHeight := max(height-loadingMargin, minDialogHeight)
 	progress := progressBody(state, innerWidth, innerHeight)
-	return core.BorderStyle.Render(progress)
+	return styles.BorderNorm.Render(progress)
 }
 
 // progressBody renders the body of the progress dialog. It shows the current path, the running
@@ -44,11 +44,11 @@ func progressBody(state *model.ScanState, width, height int) string {
 	totalWarnings := len(warnings)
 
 	var body strings.Builder
-	body.WriteString(" Scanning...")
+	body.WriteString(styles.BoldAccent.Render(" Scanning..."))
 	body.WriteString("\n\n")
 
 	itemsStr := commaFormat(total)
-	fmt.Fprintf(&body, " Total items: %s    size: %s", itemsStr, totalSize)
+	fmt.Fprintf(&body, " %-13s%s    %s: %s", styles.Dim.Render("Total items:"), styles.Main.Render(itemsStr), styles.Dim.Render("size"), styles.Main.Render(fmt.Sprintf("%s", totalSize)))
 	body.WriteString("\n")
 
 	pathStr := currentPath
@@ -56,21 +56,21 @@ func progressBody(state *model.ScanState, width, height int) string {
 	if len(pathStr) > maxPath {
 		pathStr = shortenPath(pathStr, maxPath)
 	}
-	fmt.Fprintf(&body, " ")
+	body.WriteString(" ")
 
-	body.WriteString(pathStr)
+	body.WriteString(styles.Muted.Render(pathStr))
 	body.WriteString("\n")
 
 	if totalWarnings > 0 {
 		body.WriteString("\n")
 		avail := max(height-progressOverhead, 1)
-		fmt.Fprintf(&body, " WARNING: %d %s - sizes may be inaccurate", totalWarnings, plural("error", totalWarnings))
+		fmt.Fprintf(&body, " %s", styles.BoldAccent.Render(fmt.Sprintf("WARNING: %d %s - sizes may be inaccurate", totalWarnings, plural("error", totalWarnings))))
 		body.WriteString("\n")
 
 		start := 0
 		if totalWarnings > avail {
 			start = totalWarnings - avail + 1
-			fmt.Fprintf(&body, " ... (%d more) ...", totalWarnings-avail)
+			fmt.Fprintf(&body, " %s", styles.Muted.Render(fmt.Sprintf("... (%d more) ...", totalWarnings-avail)))
 			body.WriteString("\n")
 		}
 		for i := start; i < totalWarnings; i++ {
@@ -79,7 +79,7 @@ func progressBody(state *model.ScanState, width, height int) string {
 			if len(warning) > maxW {
 				warning = warning[:maxW]
 			}
-			fmt.Fprintf(&body, " %s", warning)
+			fmt.Fprintf(&body, " %s", styles.Dim.Render(warning))
 			body.WriteString("\n")
 		}
 		body.WriteString("\n")
@@ -87,7 +87,7 @@ func progressBody(state *model.ScanState, width, height int) string {
 		body.WriteString("\n")
 	}
 
-	body.WriteString(" Press ctrl+c to abort")
+	body.WriteString(styles.Muted.Render(" Press ctrl+c to abort"))
 
 	lines := strings.Split(body.String(), "\n")
 	for i, line := range lines {
