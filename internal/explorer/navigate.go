@@ -29,7 +29,7 @@ func enterSelected(ctx *core.Context) {
 		return
 	}
 	core.Rebuild(ctx)
-	restoreCursorByUID(ctx)
+	core.RestoreCursorByUID(ctx)
 }
 
 // goToParent moves the view up one directory level. No op at the root. Like enterSelected, the
@@ -46,22 +46,5 @@ func goToParent(ctx *core.Context) {
 	}
 	ctx.Current = ctx.Current.ParentDir()
 	core.Rebuild(ctx)
-	restoreCursorByUID(ctx)
-}
-
-// restoreCursorByUID positions the cursor on the row whose UID matches the current directory's
-// lastSelectedUID, when one is set. The set call happens just before navigation in
-// enterSelected and goToParent, so the cursor lands back on the same logical row the user came
-// from.
-func restoreCursorByUID(ctx *core.Context) {
-	uid := ctx.Current.LastSelectedUID()
-	if uid == 0 {
-		return
-	}
-	for i, item := range ctx.Items {
-		if item.UID() == uid {
-			ctx.Table.SetCursor(i)
-			return
-		}
-	}
+	core.RestoreCursorByUID(ctx)
 }

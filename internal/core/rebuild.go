@@ -24,3 +24,19 @@ func applyResize(ctx *Context) {
 	ctx.Table.SetWidth(innerWidth)
 	ctx.Table.SetHeight(max(innerHeight-3, 1))
 }
+
+// RestoreCursorByUID positions the cursor on the row whose UID matches the current directory's
+// lastSelectedUID, when one is set. The set call happens just before navigation so the cursor
+// lands back on the same logical row the user came from.
+func RestoreCursorByUID(ctx *Context) {
+	uid := ctx.Current.LastSelectedUID()
+	if uid == 0 {
+		return
+	}
+	for i, item := range ctx.Items {
+		if item.UID() == uid {
+			ctx.Table.SetCursor(i)
+			return
+		}
+	}
+}

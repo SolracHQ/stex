@@ -3,6 +3,7 @@
 package command
 
 import (
+	"strconv"
 	"strings"
 
 	"charm.land/bubbles/v2/help"
@@ -97,11 +98,31 @@ var commands = map[string]cmdDef{
 			return returnTo, nil
 		},
 	},
+	"up": {
+		run: func(ctx *core.Context, arg string, returnTo core.Mode) (core.Mode, tea.Cmd) {
+			n := 1
+			if arg != "" {
+				parsed, err := strconv.Atoi(arg)
+				if err != nil || parsed < 1 {
+					return returnTo, nil
+				}
+				n = parsed
+			}
+			for range n {
+				if ctx.Current.ParentDir() == nil {
+					break
+				}
+				ctx.Current = ctx.Current.ParentDir()
+			}
+			core.Rebuild(ctx)
+			return returnTo, nil
+		},
+	},
 }
 
 // commandVerbs is the canonical verb list shown when no argument has been typed yet. Short
 // forms like q are handled by the parser but never appear in suggestions.
-var commandVerbs = []string{"quit", "save", "sort", "sortby", "group", "toggle"}
+var commandVerbs = []string{"quit", "save", "sort", "sortby", "group", "toggle", "up"}
 
 // Command is the command line mode. It owns a textinput widget with tab completion and a return
 // target that the mode transitions back to on complete or cancel.
