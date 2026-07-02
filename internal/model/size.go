@@ -14,12 +14,12 @@ type Size uint64
 
 // String formats the receiver as a binary unit value with two decimal places, for example
 // "1.23 GB" or "0 B" for zero.
-func (s Size) String() string {
-	if s == 0 {
+func (size Size) String() string {
+	if size == 0 {
 		return "0 B"
 	}
 	index := 0
-	value := float64(s)
+	value := float64(size)
 	for value >= bytesPerUnit && index < len(sizeUnits)-1 {
 		value /= bytesPerUnit
 		index++
@@ -29,9 +29,9 @@ func (s Size) String() string {
 
 // PercentOf returns the receiver as a percentage of total, in the range 0.0 to 100.0. Returns
 // 0 when total is 0 to avoid division by zero and to make "no data" cases render as 0.00%.
-func (s Size) PercentOf(total Size) float64 {
+func (size Size) PercentOf(total Size) float64 {
 	if total == 0 {
 		return 0
 	}
-	return float64(s) / float64(total) * 100
+	return float64(size) / float64(total) * 100
 }

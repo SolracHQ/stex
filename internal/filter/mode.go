@@ -15,8 +15,8 @@ import (
 )
 
 // Filter is the regex filter mode. It owns a textinput widget and updates the shared config
-// filter on every change. The returnTo field is the mode the filter transitions back to on
-// confirm or cancel.
+// filter on every keystroke when LiveFilter is on, or on Enter when LiveFilter is off. The
+// returnTo field is the mode the filter transitions back to on confirm or cancel.
 type Filter struct {
 	input    textinput.Model
 	returnTo core.Mode
@@ -32,26 +32,26 @@ func New(returnTo core.Mode) *Filter {
 }
 
 // Init focuses the textinput so the user can type the pattern.
-func (f *Filter) Init(_ *core.Context) tea.Cmd {
-	return f.input.Focus()
+func (flt *Filter) Init(_ *core.Context) tea.Cmd {
+	return flt.input.Focus()
 }
 
 // Update handles the filter key map plus the underlying text input. Live mode commits the
 // pattern on every keystroke, manual mode waits for enter.
-func (f *Filter) Update(ctx *core.Context, msg tea.Msg) (core.Mode, tea.Cmd) {
+func (flt *Filter) Update(ctx *core.Context, msg tea.Msg) (core.Mode, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
 		switch {
 		case key.Matches(msg, filterKeys.Confirm):
-			commit(ctx, f.input.Value())
-			return f.returnTo, nil
+			commit(ctx, flt.input.Value())
+			return flt.returnTo, nil
 		case key.Matches(msg, filterKeys.Cancel):
 			ctx.Config.Filter = nil
-			return f.returnTo, nil
+			return flt.returnTo, nil
 		case key.Matches(msg, filterKeys.ToggleLive):
 			ctx.Config.LiveFilter = !ctx.Config.LiveFilter
 			if ctx.Config.LiveFilter {
-				commit(ctx, f.input.Value())
+				commit(ctx, flt.input.Value())
 			} else {
 				ctx.Config.Filter = nil
 			}
@@ -60,9 +60,9 @@ func (f *Filter) Update(ctx *core.Context, msg tea.Msg) (core.Mode, tea.Cmd) {
 		}
 	}
 	var cmd tea.Cmd
-	f.input, cmd = f.input.Update(msg)
+	flt.input, cmd = flt.input.Update(msg)
 	if ctx.Config.LiveFilter {
-		commit(ctx, f.input.Value())
+		commit(ctx, flt.input.Value())
 		core.Rebuild(ctx)
 		return nil, cmd
 	}
@@ -70,7 +70,7 @@ func (f *Filter) Update(ctx *core.Context, msg tea.Msg) (core.Mode, tea.Cmd) {
 }
 
 // Help returns the filter key bindings for the help footer.
-func (f *Filter) Help() help.KeyMap {
+func (flt *Filter) Help() help.KeyMap {
 	return core.FlatKeyMap{filterKeys.Confirm, filterKeys.Cancel, filterKeys.ToggleLive}
 }
 

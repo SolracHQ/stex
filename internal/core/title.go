@@ -12,9 +12,9 @@ import (
 // "grouping | total size | file count, dir count | current path". In narrow mode the counts are
 // dropped, leaving "grouping | total size | current path".
 //
-// showIcons toggles the 📄 and 📁 glyphs in the file count segment. width is the full width of
-// the title bar in cells, the path is shortened from the left with "/.../" when it does not
-// fit.
+// width is the full width of the title bar in cells. The path segment is shortened from the left
+// with "/.../" when it does not fit. grouping is a human readable label like "mixed" or "files
+// first" that appears on the left side.
 func Title(dir *model.Dir, width int, showIcons bool, grouping string) string {
 	if dir == nil {
 		return ""

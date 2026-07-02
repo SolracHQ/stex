@@ -7,14 +7,14 @@ import (
 
 const overlayPadX = 8
 
-func (c *Command) Overlay(ctx *core.Context) string {
+func (cmd *Command) Overlay(ctx *core.Context) string {
 	width := max(1, min(60, ctx.Width-4))
-	c.input.SetWidth(width - overlayPadX)
+	cmd.input.SetWidth(width - overlayPadX)
 
-	s := c.input.Styles()
+	s := cmd.input.Styles()
 	s.Focused.Text = styles.Accent
 	s.Focused.Prompt = styles.Accent
-	c.input.SetStyles(s)
+	cmd.input.SetStyles(s)
 
-	return styles.DialogBorder.Width(width).Render(c.input.View())
+	return styles.DialogBorder.Width(width).Render(cmd.input.View())
 }

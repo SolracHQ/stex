@@ -8,16 +8,16 @@ import "regexp"
 type SortBy int
 
 const (
-	SortByName SortBy = iota
-	SortBySize
+	SortByName SortBy = iota // order by base name, case sensitive ASCII
+	SortBySize               // order by byte size
 )
 
 // SortOrder identifies the direction of the sort, ascending or descending.
 type SortOrder int
 
 const (
-	Ascending SortOrder = iota
-	Descending
+	Ascending  SortOrder = iota // smallest first, A to Z
+	Descending                  // largest first, Z to A
 )
 
 // Grouping identifies how files and subdirectories are interleaved in a listing. The five values
@@ -26,11 +26,11 @@ const (
 type Grouping int
 
 const (
-	FilesFirst Grouping = iota
-	DirsFirst
-	FilesOnly
-	DirsOnly
-	Mixed
+	FilesFirst Grouping = iota // dirs below files
+	DirsFirst                  // files below dirs
+	FilesOnly                  // only show files
+	DirsOnly                   // only show directories
+	Mixed                      // all items sorted together by the chosen field
 )
 
 // Config is the full set of user facing settings. In code the fields are read and written

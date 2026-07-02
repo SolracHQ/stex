@@ -36,9 +36,9 @@ type App struct {
 // starts in the scanning mode (async tree build) and transitions to the explorer when the scan
 // completes.
 func New(path string, cfg config.Config) tea.Model {
-	helpModel := styles.HelpDefaults()
+	help := styles.HelpDefaults()
 
-	tableView := table.New(
+	table := table.New(
 		table.WithFocused(true),
 		table.WithStyles(styles.TableDefault()),
 	)
@@ -49,9 +49,9 @@ func New(path string, cfg config.Config) tea.Model {
 			Config: cfg,
 			Width:  80,
 			Height: 24,
-			Help:   helpModel,
+			Help:   help,
 			Keys:   core.DefaultKeys(),
-			Table:  tableView,
+			Table:  table,
 		},
 		mode: scanning.New(path),
 	}
@@ -59,8 +59,8 @@ func New(path string, cfg config.Config) tea.Model {
 
 // Init returns the active mode's init command. The first installed mode is scanning, so Init
 // returns its first tick.
-func (a *App) Init() tea.Cmd {
-	if initCmd := a.mode.Init(a.ctx); initCmd != nil {
+func (app *App) Init() tea.Cmd {
+	if initCmd := app.mode.Init(app.ctx); initCmd != nil {
 		return initCmd
 	}
 	return nil
@@ -69,50 +69,50 @@ func (a *App) Init() tea.Cmd {
 // Update dispatches a message to the active mode. It also intercepts window resize (to keep
 // the context in sync) and the global quit key. When a mode returns a new mode, the new
 // mode's Init is called immediately and its command is appended.
-func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (app *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
 	if sizeMsg, ok := msg.(tea.WindowSizeMsg); ok {
-		a.ctx.Width = sizeMsg.Width
-		a.ctx.Height = sizeMsg.Height
-		a.ctx.Help.SetWidth(sizeMsg.Width - 4)
+		app.ctx.Width = sizeMsg.Width
+		app.ctx.Height = sizeMsg.Height
+		app.ctx.Help.SetWidth(sizeMsg.Width - 4)
 	}
 
 	if keyMsg, ok := msg.(tea.KeyPressMsg); ok {
-		if key.Matches(keyMsg, a.ctx.Keys.Quit) {
-			return a, tea.Quit
+		if key.Matches(keyMsg, app.ctx.Keys.Quit) {
+			return app, tea.Quit
 		}
 	}
 
-	next, cmd := a.mode.Update(a.ctx, msg)
+	next, cmd := app.mode.Update(app.ctx, msg)
 	if cmd != nil {
 		cmds = append(cmds, cmd)
 	}
 
 	if next != nil {
-		a.mode = next
-		if initCmd := next.Init(a.ctx); initCmd != nil {
+		app.mode = next
+		if initCmd := next.Init(app.ctx); initCmd != nil {
 			cmds = append(cmds, initCmd)
 		}
 	}
 
-	return a, tea.Batch(cmds...)
+	return app, tea.Batch(cmds...)
 }
 
 // View returns the rendered frame. The base panels (title, table, info, footer) come from
 // core.RenderBase when the context is ready, otherwise from core.Blank. The active mode's
 // overlay, when non empty, is composited on top by overlayCenter.
-func (a *App) View() tea.View {
+func (app *App) View() tea.View {
 	var body string
-	if a.ctx.Ready {
-		body = core.RenderBase(a.ctx, a.mode.Help())
+	if app.ctx.Ready {
+		body = core.RenderBase(app.ctx, app.mode.Help())
 	} else {
-		body = core.Blank(a.ctx.Width, a.ctx.Height)
+		body = core.Blank(app.ctx.Width, app.ctx.Height)
 	}
-	if overlay := a.mode.Overlay(a.ctx); overlay != "" {
+	if overlay := app.mode.Overlay(app.ctx); overlay != "" {
 		body = overlayCenter(body, overlay)
 	}
-	if a.ctx.Ready {
+	if app.ctx.Ready {
 		return core.WrapView(body)
 	}
 	return core.LoadingView(body)

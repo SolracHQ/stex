@@ -47,18 +47,18 @@ func progressBody(state *model.ScanState, width, height int) string {
 	body.WriteString(styles.BoldAccent.Render(" Scanning..."))
 	body.WriteString("\n\n")
 
-	itemsStr := commaFormat(total)
-	fmt.Fprintf(&body, " %-13s%s    %s: %s", styles.Dim.Render("Total items:"), styles.Main.Render(itemsStr), styles.Dim.Render("size"), styles.Main.Render(fmt.Sprintf("%s", totalSize)))
+	items := commaFormat(total)
+	fmt.Fprintf(&body, " %-13s%s    %s: %s", styles.Dim.Render("Total items:"), styles.Main.Render(items), styles.Dim.Render("size"), styles.Main.Render(fmt.Sprintf("%s", totalSize)))
 	body.WriteString("\n")
 
-	pathStr := currentPath
+	path := currentPath
 	maxPath := width - 4
-	if len(pathStr) > maxPath {
-		pathStr = shortenPath(pathStr, maxPath)
+	if len(path) > maxPath {
+		path = shortenPath(path, maxPath)
 	}
 	body.WriteString(" ")
 
-	body.WriteString(styles.Muted.Render(pathStr))
+	body.WriteString(styles.Muted.Render(path))
 	body.WriteString("\n")
 
 	if totalWarnings > 0 {

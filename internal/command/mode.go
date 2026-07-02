@@ -120,8 +120,7 @@ var commands = map[string]cmdDef{
 	},
 }
 
-// commandVerbs is the canonical verb list shown when no argument has been typed yet. Short
-// forms like q are handled by the parser but never appear in suggestions.
+// commandVerbs is the canonical verb list shown when no argument has been typed yet.
 var commandVerbs = []string{"quit", "save", "sort", "sortby", "group", "toggle", "up"}
 
 // Command is the command line mode. It owns a textinput widget with tab completion and a return
@@ -146,61 +145,61 @@ func New(returnTo core.Mode) *Command {
 }
 
 // Init focuses the textinput so the user can type the command.
-func (c *Command) Init(_ *core.Context) tea.Cmd {
-	return c.input.Focus()
+func (cmd *Command) Init(_ *core.Context) tea.Cmd {
+	return cmd.input.Focus()
 }
 
-// Update processes the textinput, refreshes the suggestion pool, and handles enter (run
-// command) and esc (cancel).
-func (c *Command) Update(ctx *core.Context, msg tea.Msg) (core.Mode, tea.Cmd) {
-	preValue := c.input.Value()
+// Update processes the textinput, refreshes the suggestion pool, and runs or cancels the
+// command.
+func (cmd *Command) Update(ctx *core.Context, msg tea.Msg) (core.Mode, tea.Cmd) {
+	preValue := cmd.input.Value()
 	needRefresh := false
 
 	if keyMsg, ok := msg.(tea.KeyPressMsg); ok {
 		switch {
 		case key.Matches(keyMsg, commandKeys.Confirm):
-			if cur := c.input.CurrentSuggestion(); cur != "" {
-				c.input.SetValue(cur)
+			if cur := cmd.input.CurrentSuggestion(); cur != "" {
+				cmd.input.SetValue(cur)
 			}
-			return runCommand(ctx, c.input.Value(), c.returnTo)
+			return runCommand(ctx, cmd.input.Value(), cmd.returnTo)
 		case key.Matches(keyMsg, commandKeys.Cancel):
-			return c.returnTo, nil
+			return cmd.returnTo, nil
 		}
 
 		found := strings.Contains(preValue, " ")
-		afterSpace := strings.IndexByte(c.input.Value(), ' ')
+		afterSpace := strings.IndexByte(cmd.input.Value(), ' ')
 		if (!found && afterSpace != -1) || (found && afterSpace == -1) {
 			needRefresh = true
 		}
 	}
 
-	var cmd tea.Cmd
-	c.input, cmd = c.input.Update(msg)
+	var c tea.Cmd
+	cmd.input, c = cmd.input.Update(msg)
 
 	if needRefresh {
-		c.refreshSuggestions(c.input.Value())
+		cmd.refreshSuggestions(cmd.input.Value())
 	}
 
 	if _, ok := msg.(tea.KeyPressMsg); !ok {
-		c.refreshSuggestions(c.input.Value())
+		cmd.refreshSuggestions(cmd.input.Value())
 	}
 
-	return nil, cmd
+	return nil, c
 }
 
 // refreshSuggestions sets the suggestion pool based on whether the current value has a space
 // (verb plus arguments) or not (verb only).
-func (c *Command) refreshSuggestions(value string) {
+func (cmd *Command) refreshSuggestions(value string) {
 	before, _, ok := strings.Cut(value, " ")
 	if !ok {
-		c.input.SetSuggestions(commandVerbs)
+		cmd.input.SetSuggestions(commandVerbs)
 		return
 	}
 
 	verb := before
 	def, exists := commands[verb]
 	if !exists || len(def.args) == 0 {
-		c.input.SetSuggestions(nil)
+		cmd.input.SetSuggestions(nil)
 		return
 	}
 
@@ -208,11 +207,11 @@ func (c *Command) refreshSuggestions(value string) {
 	for i, arg := range def.args {
 		full[i] = verb + " " + arg
 	}
-	c.input.SetSuggestions(full)
+	cmd.input.SetSuggestions(full)
 }
 
 // Help returns the command key bindings for the help footer.
-func (c *Command) Help() help.KeyMap {
+func (cmd *Command) Help() help.KeyMap {
 	return core.FlatKeyMap{commandKeys.Confirm, commandKeys.Cancel}
 }
 

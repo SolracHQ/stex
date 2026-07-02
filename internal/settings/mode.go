@@ -38,66 +38,66 @@ func New(returnTo core.Mode) *Settings {
 }
 
 // Init takes a snapshot of the current config for revert on esc. Only runs once.
-func (s *Settings) Init(ctx *core.Context) tea.Cmd {
-	if !s.inited {
-		s.snapshot = ctx.Config
-		s.inited = true
+func (settings *Settings) Init(ctx *core.Context) tea.Cmd {
+	if !settings.inited {
+		settings.snapshot = ctx.Config
+		settings.inited = true
 	}
 	return nil
 }
 
-// Update handles the settings key map. Tab toggles the focused row or opens the grouping
-// picker, enter closes, esc reverts and closes, S saves and closes, R resets.
-func (s *Settings) Update(ctx *core.Context, msg tea.Msg) (core.Mode, tea.Cmd) {
+// Update moves the cursor, toggles the focused field or opens the grouping picker, confirms,
+// reverts, saves, or resets to defaults.
+func (settings *Settings) Update(ctx *core.Context, msg tea.Msg) (core.Mode, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
 		switch {
 		case key.Matches(msg, settingsKeys.Up):
-			if s.cursor > 0 {
-				s.cursor--
+			if settings.cursor > 0 {
+				settings.cursor--
 			}
 		case key.Matches(msg, settingsKeys.Down):
-			if s.cursor < rowCount-1 {
-				s.cursor++
+			if settings.cursor < rowCount-1 {
+				settings.cursor++
 			}
 		case key.Matches(msg, settingsKeys.Tab):
-			if next := s.applyFocused(ctx); next != nil {
+			if next := settings.applyFocused(ctx); next != nil {
 				return next, nil
 			}
 			core.Rebuild(ctx)
 			return nil, nil
 		case key.Matches(msg, settingsKeys.Confirm):
-			return s.returnTo, nil
+			return settings.returnTo, nil
 		case key.Matches(msg, settingsKeys.Save):
 			save(ctx.Config)
-			return s.returnTo, nil
+			return settings.returnTo, nil
 		case key.Matches(msg, settingsKeys.Reset):
 			ctx.Config = config.DefaultConfig()
 			core.Rebuild(ctx)
 			return nil, nil
 		case key.Matches(msg, settingsKeys.Cancel):
-			ctx.Config = s.snapshot
-			return s.returnTo, nil
+			ctx.Config = settings.snapshot
+			return settings.returnTo, nil
 		}
 	}
 	return nil, nil
 }
 
 // Help returns the settings key bindings for the help footer.
-func (s *Settings) Help() help.KeyMap {
+func (settings *Settings) Help() help.KeyMap {
 	return settingsKeys
 }
 
 // applyFocused either toggles the focused field or opens the grouping picker for the group
 // row. Returns the new mode when the grouping picker is opened, nil otherwise.
-func (s *Settings) applyFocused(ctx *core.Context) core.Mode {
-	switch s.cursor {
+func (settings *Settings) applyFocused(ctx *core.Context) core.Mode {
+	switch settings.cursor {
 	case rowSort:
 		ctx.Config.SortBy.Toggle()
 	case rowOrder:
 		ctx.Config.SortOrder.Toggle()
 	case rowGroup:
-		return choose.NewGroupPicker(ctx.Config.Grouping, s)
+		return choose.NewGroupPicker(ctx.Config.Grouping, settings)
 	case rowIcons:
 		ctx.Config.ShowIcons = !ctx.Config.ShowIcons
 	case rowHidden:

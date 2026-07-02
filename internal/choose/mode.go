@@ -33,36 +33,37 @@ func New(title string, options []Option, backTo core.Mode) *Choose {
 	return &Choose{title: title, options: options, backTo: backTo}
 }
 
-// SetCursor positions the highlight on the given row.
-func (c *Choose) SetCursor(i int) {
-	if i >= 0 && i < len(c.options) {
-		c.cursor = i
+// SetCursor positions the highlight on the given row. Values outside the option range are
+// silently ignored.
+func (ch *Choose) SetCursor(i int) {
+	if i >= 0 && i < len(ch.options) {
+		ch.cursor = i
 	}
 }
 
 // Init returns nil.
-func (c *Choose) Init(_ *core.Context) tea.Cmd { return nil }
+func (ch *Choose) Init(_ *core.Context) tea.Cmd { return nil }
 
-// Update handles up/down keys to move the cursor, enter to confirm, esc to cancel.
-func (c *Choose) Update(ctx *core.Context, msg tea.Msg) (core.Mode, tea.Cmd) {
+// Update moves the cursor, confirms the selection, or cancels the dialog.
+func (ch *Choose) Update(ctx *core.Context, msg tea.Msg) (core.Mode, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
 		switch {
 		case key.Matches(msg, chooseKeys.Up):
-			if c.cursor > 0 {
-				c.cursor--
+			if ch.cursor > 0 {
+				ch.cursor--
 			}
 		case key.Matches(msg, chooseKeys.Down):
-			if c.cursor < len(c.options)-1 {
-				c.cursor++
+			if ch.cursor < len(ch.options)-1 {
+				ch.cursor++
 			}
 		case key.Matches(msg, chooseKeys.Confirm):
-			if c.cursor >= 0 && c.cursor < len(c.options) {
-				return c.options[c.cursor].Action(ctx)
+			if ch.cursor >= 0 && ch.cursor < len(ch.options) {
+				return ch.options[ch.cursor].Action(ctx)
 			}
 		case key.Matches(msg, chooseKeys.Cancel):
-			if c.backTo != nil {
-				return c.backTo, nil
+			if ch.backTo != nil {
+				return ch.backTo, nil
 			}
 			return nil, nil
 		}
@@ -71,7 +72,7 @@ func (c *Choose) Update(ctx *core.Context, msg tea.Msg) (core.Mode, tea.Cmd) {
 }
 
 // Help returns the choose key bindings for the help footer.
-func (c *Choose) Help() help.KeyMap {
+func (ch *Choose) Help() help.KeyMap {
 	return core.FlatKeyMap{chooseKeys.Up, chooseKeys.Down, chooseKeys.Confirm, chooseKeys.Cancel}
 }
 
@@ -92,12 +93,12 @@ func NewGroupPicker(current config.Grouping, backTo core.Mode) *Choose {
 			},
 		}
 	}
-	c := New("Group By", options, backTo)
+	ch := New("Group By", options, backTo)
 	for i, v := range values {
 		if v == current {
-			c.SetCursor(i)
+			ch.SetCursor(i)
 			break
 		}
 	}
-	return c
+	return ch
 }

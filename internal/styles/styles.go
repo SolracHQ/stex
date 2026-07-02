@@ -18,8 +18,8 @@ const (
 	SelectBg    = "239" // dark gray background for selected table rows
 )
 
-// DialogBorder returns a double border style with the accent color and inner horizontal
-// padding. The caller should set Width before rendering.
+// DialogBorder is a double border style with the accent color and inner horizontal padding.
+// The caller should set Width before rendering.
 var DialogBorder = lipgloss.NewStyle().
 	Border(lipgloss.DoubleBorder()).
 	BorderForeground(lipgloss.Color(AccentColor)).
@@ -78,7 +78,7 @@ func HelpDefaults() help.Model {
 	return m
 }
 
-// TableDefault returns the standard table styles.
+// TableDefault returns a table.Styles with a bold header and the project's SelectBg highlight.
 func TableDefault() table.Styles {
 	s := table.DefaultStyles()
 	s.Header = lipgloss.NewStyle().Bold(true)

@@ -41,7 +41,7 @@ func Load(path string) (Config, error) {
 // Save writes c to the user's config file ($UserConfigDir/stex/config.json). The parent
 // directory is created if it does not exist. The Filter field is not exported to JSON, so it
 // is always nil after a round trip.
-func (c Config) Save() error {
+func (cfg Config) Save() error {
 	path, err := DefaultPath()
 	if err != nil {
 		return fmt.Errorf("config path: %w", err)
@@ -49,7 +49,7 @@ func (c Config) Save() error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return fmt.Errorf("create config dir: %w", err)
 	}
-	data, err := json.MarshalIndent(c, "", "  ")
+	data, err := json.MarshalIndent(cfg, "", "  ")
 	if err != nil {
 		return fmt.Errorf("marshal config: %w", err)
 	}

@@ -92,7 +92,7 @@ func (Explorer) Update(ctx *core.Context, msg tea.Msg) (core.Mode, tea.Cmd) {
 	return nil, nil
 }
 
-// View returns "". The base view is drawn by core.RenderBase. The explorer itself does not
+// Overlay returns "". The base view is drawn by core.RenderBase. The explorer itself does not
 // draw any overlay, the base renderer handles layout and any active sub mode draws its own
 // overlay on top.
 func (Explorer) Overlay(_ *core.Context) string { return "" }

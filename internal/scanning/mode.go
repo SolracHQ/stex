@@ -38,20 +38,20 @@ func New(path string) *Loading {
 
 // Init returns the first poll command. The Bubble Tea runtime will run it and the resulting
 // message will be delivered to Update, which schedules the next poll.
-func (l *Loading) Init(_ *core.Context) tea.Cmd {
+func (load *Loading) Init(_ *core.Context) tea.Cmd {
 	return tick()
 }
 
 // Update handles the scan tick. When the scan is done it sets the Context's root, current
 // directory, and Ready flag, and returns a new explorer mode. While the scan is still
 // running it schedules the next poll.
-func (l *Loading) Update(ctx *core.Context, msg tea.Msg) (core.Mode, tea.Cmd) {
+func (load *Loading) Update(ctx *core.Context, msg tea.Msg) (core.Mode, tea.Cmd) {
 	switch msg.(type) {
 	case scanTickMsg:
-		l.state.Mu.Lock()
-		done := l.state.Done
-		root := l.state.Result
-		l.state.Mu.Unlock()
+		load.state.Mu.Lock()
+		done := load.state.Done
+		root := load.state.Result
+		load.state.Mu.Unlock()
 		if done {
 			ctx.Root = root
 			ctx.Current = root
@@ -63,17 +63,17 @@ func (l *Loading) Update(ctx *core.Context, msg tea.Msg) (core.Mode, tea.Cmd) {
 	return nil, nil
 }
 
-// View returns the progress dialog rendered at the context's dimensions. Returns "" when
+// Overlay returns the progress dialog rendered at the context's dimensions. Returns "" when
 // dimensions are not yet known, so the program does not flash an empty box on the first frame.
-func (l *Loading) Overlay(ctx *core.Context) string {
+func (load *Loading) Overlay(ctx *core.Context) string {
 	if ctx.Width == 0 || ctx.Height == 0 {
 		return ""
 	}
-	return progressBox(l.state, ctx.Width, ctx.Height)
+	return progressBox(load.state, ctx.Width, ctx.Height)
 }
 
 // Help returns nil, the loading screen has no key bindings.
-func (l *Loading) Help() help.KeyMap { return nil }
+func (load *Loading) Help() help.KeyMap { return nil }
 
 // tick returns a tea.Cmd that emits a scanTickMsg after one scanTickInterval. The Bubble Tea
 // runtime will deliver the message to the active mode's Update, which decides whether to
