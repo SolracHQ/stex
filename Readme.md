@@ -58,7 +58,6 @@ traditionalists and awsd for gamers.
 | `/` | filter mode |
 | `:` | command mode |
 | `S` | settings panel |
-| `g` | grouping picker |
 | `c` | clear filter |
 | `?` | toggle help |
 | `ctrl+c` | quit |

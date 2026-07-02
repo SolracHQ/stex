@@ -5,8 +5,8 @@ import (
 
 	"github.com/SolracHQ/stex/internal/config"
 	"github.com/SolracHQ/stex/internal/core"
-	"github.com/SolracHQ/stex/internal/testutil"
 	"github.com/SolracHQ/stex/internal/styles"
+	"github.com/SolracHQ/stex/internal/testutil"
 
 	"charm.land/bubbles/v2/table"
 	tea "charm.land/bubbletea/v2"

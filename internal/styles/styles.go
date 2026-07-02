@@ -10,12 +10,12 @@ import (
 
 // Color palette.
 const (
-	AccentColor = "11"   // yellow, used for borders, highlights, cursor, titles
-	ActiveColor = "14"   // cyan, used for live indicators and help keys
-	MainColor   = "7"    // white, used for primary text
-	DimColor    = "240"  // gray, used for borders, separators, secondary text
-	MutedColor  = "8"    // darker gray, used for less important text
-	SelectBg    = "239"  // dark gray background for selected table rows
+	AccentColor = "11"  // yellow, used for borders, highlights, cursor, titles
+	ActiveColor = "14"  // cyan, used for live indicators and help keys
+	MainColor   = "7"   // white, used for primary text
+	DimColor    = "240" // gray, used for borders, separators, secondary text
+	MutedColor  = "8"   // darker gray, used for less important text
+	SelectBg    = "239" // dark gray background for selected table rows
 )
 
 // DialogBorder returns a double border style with the accent color and inner horizontal

@@ -6,7 +6,6 @@ package explorer
 import (
 	"charm.land/bubbles/v2/help"
 	"charm.land/bubbles/v2/key"
-	"github.com/SolracHQ/stex/internal/choose"
 	"github.com/SolracHQ/stex/internal/command"
 	"github.com/SolracHQ/stex/internal/config"
 	"github.com/SolracHQ/stex/internal/core"
@@ -63,9 +62,6 @@ func (Explorer) Update(ctx *core.Context, msg tea.Msg) (core.Mode, tea.Cmd) {
 		case key.Matches(msg, explorerKeys.Back):
 			goToParent(ctx)
 			core.UpdateInfo(ctx)
-
-		case key.Matches(msg, explorerKeys.Group):
-			return choose.NewGroupPicker(ctx.Config.Grouping, Explorer{}), nil
 
 		case key.Matches(msg, explorerKeys.Search):
 			return filter.New(Explorer{}), nil

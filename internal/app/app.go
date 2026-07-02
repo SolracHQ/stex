@@ -20,9 +20,9 @@ import (
 
 	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/table"
+	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
-	tea "charm.land/bubbletea/v2"
 )
 
 // App is the top level Bubble Tea model. It owns the shared Context and the active Mode, and

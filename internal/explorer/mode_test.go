@@ -9,8 +9,8 @@ import (
 
 	"github.com/SolracHQ/stex/internal/config"
 	"github.com/SolracHQ/stex/internal/core"
-	"github.com/SolracHQ/stex/internal/styles"
 	stexmodel "github.com/SolracHQ/stex/internal/model"
+	"github.com/SolracHQ/stex/internal/styles"
 
 	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/table"
@@ -95,15 +95,6 @@ func TestExplorerHelpToggleChangesShowAll(t *testing.T) {
 	_, _ = e.Update(ctx, runeKey('?'))
 	if ctx.Help.ShowAll == prev {
 		t.Fatal("expected help toggle to flip ShowAll")
-	}
-}
-
-func TestExplorerGroupOpensPicker(t *testing.T) {
-	ctx := newCtx(t)
-	e := Explorer{}
-	next, _ := e.Update(ctx, runeKey('g'))
-	if next == nil {
-		t.Fatal("expected grouping picker on g, got nil")
 	}
 }
 

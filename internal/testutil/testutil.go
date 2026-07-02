@@ -14,5 +14,5 @@ type StubMode struct{}
 
 func (StubMode) Init(*core.Context) tea.Cmd                         { return nil }
 func (StubMode) Update(*core.Context, tea.Msg) (core.Mode, tea.Cmd) { return nil, nil }
-func (StubMode) Overlay(*core.Context) string                 { return "" }
+func (StubMode) Overlay(*core.Context) string                       { return "" }
 func (StubMode) Help() help.KeyMap                                  { return nil }

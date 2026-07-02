@@ -11,7 +11,6 @@ type keys struct {
 	core.Keys
 
 	Up, Down, Enter, Back key.Binding
-	Group                 key.Binding
 	Search, ClearFilter   key.Binding
 	Command, Settings     key.Binding
 }
@@ -36,10 +35,6 @@ var explorerKeys = keys{
 	Back: key.NewBinding(
 		key.WithKeys("esc", "backspace", "left", "h", "a"),
 		key.WithHelp("←/h/a", "move out"),
-	),
-	Group: key.NewBinding(
-		key.WithKeys("g"),
-		key.WithHelp("g", "grouping"),
 	),
 	Search: key.NewBinding(
 		key.WithKeys("/"),
@@ -68,8 +63,7 @@ func (k keys) ShortHelp() []key.Binding {
 func (k keys) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
 		{k.Up, k.Down, k.Enter, k.Back},
-		{k.Group, k.Settings},
-		{k.Search, k.ClearFilter, k.Command},
+		{k.Search, k.ClearFilter, k.Command, k.Settings},
 		{k.Help, k.Quit},
 	}
 }
