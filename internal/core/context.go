@@ -31,8 +31,6 @@ type Context struct {
 
 	Help help.Model
 	Keys Keys
-
-	Ready bool
 }
 
 // InfoState holds the cached right pane content. Tracking the path lets the explorer skip

@@ -146,16 +146,6 @@ func WrapView(content string) tea.View {
 	return view
 }
 
-// LoadingView returns a tea.View configured for the loading screen. The body is rendered as
-// is, the alternate screen is enabled, and all motion mouse is used so the progress dialog
-// updates cleanly while the user can still move the mouse.
-func LoadingView(content string) tea.View {
-	view := tea.NewView(content)
-	view.AltScreen = true
-	view.MouseMode = tea.MouseModeAllMotion
-	return view
-}
-
 // splitPane joins left and right column strings with sep between them, line by line. The
 // shorter side is padded with empty lines. Each line is truncated or padded to its column
 // width. ANSI escape sequences are handled with the ansi package so colored content is not

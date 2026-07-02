@@ -15,7 +15,8 @@ import (
 
 	"github.com/SolracHQ/stex/internal/config"
 	"github.com/SolracHQ/stex/internal/core"
-	"github.com/SolracHQ/stex/internal/scanning"
+	"github.com/SolracHQ/stex/internal/explorer"
+	"github.com/SolracHQ/stex/internal/model"
 	"github.com/SolracHQ/stex/internal/styles"
 
 	"charm.land/bubbles/v2/key"
@@ -32,10 +33,10 @@ type App struct {
 	mode core.Mode
 }
 
-// New constructs the top level Bubble Tea model with the given path and resolved config. It
-// starts in the scanning mode (async tree build) and transitions to the explorer when the scan
-// completes.
-func New(path string, cfg config.Config) tea.Model {
+// New constructs the top level Bubble Tea model with the given path, resolved config, and
+// scanned root directory. It starts in the explorer mode and dispatches to whatever mode the
+// user activates.
+func New(path string, cfg config.Config, root *model.Dir) tea.Model {
 	help := styles.HelpDefaults()
 
 	table := table.New(
@@ -45,20 +46,21 @@ func New(path string, cfg config.Config) tea.Model {
 
 	return &App{
 		ctx: &core.Context{
-			Path:   path,
-			Config: cfg,
-			Width:  80,
-			Height: 24,
-			Help:   help,
-			Keys:   core.DefaultKeys(),
-			Table:  table,
+			Path:    path,
+			Config:  cfg,
+			Width:   80,
+			Height:  24,
+			Root:    root,
+			Current: root,
+			Help:    help,
+			Keys:    core.DefaultKeys(),
+			Table:   table,
 		},
-		mode: scanning.New(path),
+		mode: &explorer.Explorer{},
 	}
 }
 
-// Init returns the active mode's init command. The first installed mode is scanning, so Init
-// returns its first tick.
+// Init returns the active mode's init command.
 func (app *App) Init() tea.Cmd {
 	if initCmd := app.mode.Init(app.ctx); initCmd != nil {
 		return initCmd
@@ -100,22 +102,13 @@ func (app *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 // View returns the rendered frame. The base panels (title, table, info, footer) come from
-// core.RenderBase when the context is ready, otherwise from core.Blank. The active mode's
-// overlay, when non empty, is composited on top by overlayCenter.
+// core.RenderBase, the active mode's overlay composites on top by overlayCenter.
 func (app *App) View() tea.View {
-	var body string
-	if app.ctx.Ready {
-		body = core.RenderBase(app.ctx, app.mode.Help())
-	} else {
-		body = core.Blank(app.ctx.Width, app.ctx.Height)
-	}
+	body := core.RenderBase(app.ctx, app.mode.Help())
 	if overlay := app.mode.Overlay(app.ctx); overlay != "" {
 		body = overlayCenter(body, overlay)
 	}
-	if app.ctx.Ready {
-		return core.WrapView(body)
-	}
-	return core.LoadingView(body)
+	return core.WrapView(body)
 }
 
 // overlayCenter places foreground over background, centred inside the larger of the two. When

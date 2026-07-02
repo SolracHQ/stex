@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/SolracHQ/stex/internal/app"
 	"github.com/SolracHQ/stex/internal/config"
+	"github.com/SolracHQ/stex/internal/scanning"
 
 	flag "github.com/spf13/pflag"
 
@@ -61,7 +61,7 @@ func main() {
 		cfg.LiveFilter = false
 	}
 
-	program := tea.NewProgram(app.New(path, cfg))
+	program := tea.NewProgram(scanning.New(path, cfg))
 	if _, err := program.Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)

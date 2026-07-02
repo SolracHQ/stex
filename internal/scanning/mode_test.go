@@ -6,15 +6,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/SolracHQ/stex/internal/core"
-	"github.com/SolracHQ/stex/internal/explorer"
+	"github.com/SolracHQ/stex/internal/config"
 	"github.com/SolracHQ/stex/internal/model"
 
 	tea "charm.land/bubbletea/v2"
 )
 
 func TestLoadingStartsInProgress(t *testing.T) {
-	l := New(".")
+	l := New(".", config.DefaultConfig())
 	defer func() { l.state.Cancelled = true }()
 
 	if l.state.Done {
@@ -25,20 +24,26 @@ func TestLoadingStartsInProgress(t *testing.T) {
 	}
 }
 
-func TestLoadingStaysOnTickWhenNotDone(t *testing.T) {
+func TestLoadingInitReturnsTick(t *testing.T) {
 	l := &Loading{state: &model.ScanState{}}
-	ctx := &core.Context{Width: 80, Height: 24}
-
-	next, cmd := l.Update(ctx, scanTickMsg{})
-	if next != nil {
-		t.Fatalf("expected nil next, got %T", next)
-	}
+	cmd := l.Init()
 	if cmd == nil {
-		t.Fatal("expected tick command to be returned")
+		t.Fatal("expected tick command from Init")
 	}
 }
 
-func TestLoadingTransitionsWhenDone(t *testing.T) {
+func TestLoadingReschedulesTickWhileScanning(t *testing.T) {
+	l := &Loading{state: &model.ScanState{}}
+	next, cmd := l.Update(scanTickMsg{})
+	if cmd == nil {
+		t.Fatal("expected tick command")
+	}
+	if next != l {
+		t.Fatal("expected self as next model when scan is running")
+	}
+}
+
+func TestLoadingReturnsAppOnScanComplete(t *testing.T) {
 	tmp := t.TempDir()
 	if err := os.WriteFile(filepath.Join(tmp, "f.txt"), []byte("hi"), 0o644); err != nil {
 		t.Fatal(err)
@@ -48,48 +53,39 @@ func TestLoadingTransitionsWhenDone(t *testing.T) {
 	if state.Result == nil {
 		t.Fatal("scan produced no root")
 	}
-	l := &Loading{state: state}
-	ctx := &core.Context{Width: 80, Height: 24}
+	l := &Loading{path: tmp, cfg: config.DefaultConfig(), state: state}
 
-	next, cmd := l.Update(ctx, scanTickMsg{})
+	next, cmd := l.Update(scanTickMsg{})
 	if cmd != nil {
 		t.Fatalf("expected nil cmd on transition, got %v", cmd)
 	}
-	if _, ok := next.(*explorer.Explorer); !ok {
-		t.Fatalf("expected *Explorer, got %T", next)
-	}
-	if ctx.Root != state.Result {
-		t.Fatal("expected ctx.Root to be set")
-	}
-	if ctx.Current != state.Result {
-		t.Fatal("expected ctx.Current to be set")
-	}
-	if !ctx.Ready {
-		t.Fatal("expected ctx.Ready to be true")
+	if next == nil {
+		t.Fatal("expected a tea.Model on scan complete")
 	}
 }
 
-func TestLoadingOverlayEmptyWhenNoDims(t *testing.T) {
+func TestLoadingViewBlankWhenNoDims(t *testing.T) {
 	l := &Loading{state: &model.ScanState{}}
-	ctx := &core.Context{Width: 0, Height: 0}
-	if v := l.Overlay(ctx); v != "" {
-		t.Fatalf("expected empty view, got %q", v)
+	v := l.View()
+	if v.Content != "" {
+		t.Fatalf("expected empty view, got %q", v.Content)
 	}
 }
 
-func TestLoadingOverlayRendersOnDims(t *testing.T) {
+func TestLoadingViewRendersAfterResize(t *testing.T) {
 	l := &Loading{state: &model.ScanState{}}
-	ctx := &core.Context{Width: 80, Height: 24}
-	v := l.Overlay(ctx)
-	if v == "" {
-		t.Fatal("expected non-empty view")
+	l.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+	v := l.View()
+	if v.Content == "" {
+		t.Fatal("expected non-empty view after resize")
 	}
 }
 
-func TestLoadingHelpIsNil(t *testing.T) {
+func TestLoadingStoresWindowSize(t *testing.T) {
 	l := &Loading{state: &model.ScanState{}}
-	if l.Help() != nil {
-		t.Fatal("expected nil help")
+	l.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
+	if l.width != 120 || l.height != 40 {
+		t.Fatalf("expected 120x40, got %dx%d", l.width, l.height)
 	}
 }
 

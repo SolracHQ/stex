@@ -1,36 +1,51 @@
 package app
 
 import (
-	"charm.land/bubbles/v2/help"
 	"testing"
 
+	"charm.land/bubbles/v2/help"
 	"github.com/SolracHQ/stex/internal/config"
 	"github.com/SolracHQ/stex/internal/core"
-	"github.com/SolracHQ/stex/internal/scanning"
+	"github.com/SolracHQ/stex/internal/explorer"
+	"github.com/SolracHQ/stex/internal/model"
 	"github.com/SolracHQ/stex/internal/testutil"
 
 	tea "charm.land/bubbletea/v2"
 )
 
-func TestAppStartsInScanning(t *testing.T) {
-	m := New(".", config.DefaultConfig())
+func TestAppNewBuildsContext(t *testing.T) {
+	root := &model.Dir{}
+	m := New(".", config.DefaultConfig(), root)
 	a, ok := m.(*App)
 	if !ok {
 		t.Fatalf("expected *App, got %T", m)
 	}
-	if a.ctx.Ready {
-		t.Fatal("expected Ready=false at start")
+	if a.ctx.Root != root {
+		t.Fatal("expected ctx.Root to match the passed root")
 	}
+	if a.ctx.Current != root {
+		t.Fatal("expected ctx.Current to match the passed root")
+	}
+	if a.ctx.Path != "." {
+		t.Fatalf("expected ctx.Path to be '.', got %q", a.ctx.Path)
+	}
+}
+
+func TestAppFirstModeIsExplorer(t *testing.T) {
+	root := &model.Dir{}
+	m := New(".", config.DefaultConfig(), root)
+	a := m.(*App)
 	if a.mode == nil {
 		t.Fatal("expected a mode to be set")
 	}
-	if _, ok := a.mode.(*scanning.Loading); !ok {
-		t.Fatalf("expected *scanning.Loading, got %T", a.mode)
+	if _, ok := a.mode.(*explorer.Explorer); !ok {
+		t.Fatalf("expected *explorer.Explorer, got %T", a.mode)
 	}
 }
 
 func TestAppTableFocusedAtStart(t *testing.T) {
-	m := New(".", config.DefaultConfig())
+	root := &model.Dir{}
+	m := New(".", config.DefaultConfig(), root)
 	a := m.(*App)
 	if !a.ctx.Table.Focused() {
 		t.Fatal("expected table to be focused at start so key navigation works")
